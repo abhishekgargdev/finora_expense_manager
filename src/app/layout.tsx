@@ -1,20 +1,8 @@
 import type { Metadata, Viewport } from 'next';
-import { Space_Grotesk, Inter } from 'next/font/google';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
 import InstallAppBanner from '@/components/pwa/InstallAppBanner';
 import './globals.css';
-
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-heading",
-  weight: ["400", "600", "700"],
-  subsets: ["latin"],
-});
-
-const inter = Inter({
-  variable: "--font-sans",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: 'Expense Manager',
@@ -40,7 +28,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${spaceGrotesk.variable} ${inter.variable} h-full antialiased`}>
+    <html lang="en" suppressHydrationWarning className="h-full antialiased">
       <body className="min-h-full flex flex-col">
         <ThemeProvider>
           {children}
