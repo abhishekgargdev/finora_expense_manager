@@ -10,6 +10,7 @@ const protectedPrefixes = [
   '/credit-cards',
   '/bank-accounts',
   '/import-export',
+  '/settings',
 ];
 
 export async function middleware(req: NextRequest) {
@@ -57,6 +58,7 @@ export const config = {
     '/credit-cards/:path*',
     '/bank-accounts/:path*',
     '/import-export/:path*',
+    '/settings/:path*',
     '/login',
   ],
 };
