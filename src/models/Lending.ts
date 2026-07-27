@@ -36,7 +36,7 @@ const lendingSchema = new Schema<LendingDocument>(
 );
 
 // auto-derive status before save
-lendingSchema.pre<LendingDocument>("save", function (next) {
+lendingSchema.pre<LendingDocument>("save", function () {
   if (this.amountReturned >= this.amount) {
     this.status = "Settled";
   } else if (this.amountReturned > 0) {
@@ -44,7 +44,6 @@ lendingSchema.pre<LendingDocument>("save", function (next) {
   } else {
     this.status = "Pending";
   }
-  next();
 });
 
 lendingSchema.index({ user: 1, date: -1 });

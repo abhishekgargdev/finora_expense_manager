@@ -31,7 +31,7 @@ export async function verifySession(token: string | undefined | null) {
 }
 
 export async function getSession() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const cookie = cookieStore.get(COOKIE_NAME)?.value ?? null;
   if (!cookie) return null;
   return verifySession(cookie);
