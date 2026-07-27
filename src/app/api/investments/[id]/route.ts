@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getUserId, parseInvestment, serializeInvestment } from "../route";
+import { getUserId, parseInvestment, serializeInvestment } from "@/lib/investments-api";
 import connect from "@/lib/db";
 import InvestmentModel from "@/models/Investment";
 

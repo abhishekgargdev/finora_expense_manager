@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { ensureBankAccount, ensureCreditCard, getUserId, parseExpense, serializeExpense } from "../route";
+import { ensureBankAccount, ensureCreditCard, getUserId, parseExpense, serializeExpense } from "@/lib/expenses-api";
 import connect from "@/lib/db";
 import BankTransactionModel from "@/models/BankTransaction";
 import CreditCardTransactionModel from "@/models/CreditCardTransaction";

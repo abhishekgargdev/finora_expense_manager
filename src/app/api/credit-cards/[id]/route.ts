@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getUserId, parseCard, serializeCard } from "../route";
+import { getUserId, parseCard, serializeCard } from "@/lib/credit-cards-api";
 import connect from "@/lib/db";
 import CreditCardBillModel from "@/models/CreditCardBill";
 import CreditCardModel from "@/models/CreditCard";

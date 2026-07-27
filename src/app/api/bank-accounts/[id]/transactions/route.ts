@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUserId } from "../../route";
+import { getUserId } from "@/lib/bank-accounts-api";
 import connect from "@/lib/db";
 import BankAccountModel from "@/models/BankAccount";
 import BankTransactionModel from "@/models/BankTransaction";

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getUserId, parseLending, serializeLending } from "../route";
+import { getUserId, parseLending, serializeLending } from "@/lib/lending-api";
 import connect from "@/lib/db";
 import LendingModel from "@/models/Lending";
 

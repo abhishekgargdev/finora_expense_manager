@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUserId } from "../../route";
+import { getUserId } from "@/lib/credit-cards-api";
 import connect from "@/lib/db";
 import CreditCardModel from "@/models/CreditCard";
 import CreditCardTransactionModel from "@/models/CreditCardTransaction";

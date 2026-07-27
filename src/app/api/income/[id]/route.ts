@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { ensureBankAccount, getUserId, parseIncome, serializeIncome } from "../route";
+import { ensureBankAccount, getUserId, parseIncome, serializeIncome } from "@/lib/income-api";
 import connect from "@/lib/db";
 import BankTransactionModel from "@/models/BankTransaction";
 import IncomeModel from "@/models/Income";

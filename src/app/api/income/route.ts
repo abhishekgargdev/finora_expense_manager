@@ -1,107 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireAuth } from "@/lib/auth";
 import connect from "@/lib/db";
 import BankAccountModel from "@/models/BankAccount";
 import BankTransactionModel from "@/models/BankTransaction";
 import IncomeModel from "@/models/Income";
 
-const PAYMENT_MODES = ["Cash", "Bank Transfer", "UPI", "Other"] as const;
+import { ensureBankAccount, getUserId, parseIncome, serializeIncome, text as asString } from "@/lib/income-api";
 
-type IncomeInput = {
-  amount?: unknown;
-  source?: unknown;
-  category?: unknown;
-  date?: unknown;
-  note?: unknown;
-  paymentMode?: unknown;
-  bankAccount?: unknown;
-};
-
-export type IncomeRecord = {
-  id: string;
-  amount: number;
-  source: string;
-  category?: string;
-  date: string;
-  note?: string;
-  paymentMode: string;
-  bankAccount?: string | null;
-};
-
-function asString(value: unknown) {
-  return typeof value === "string" ? value.trim() : "";
-}
-
-export function parseIncome(input: IncomeInput, partial = false) {
-  const values: Record<string, unknown> = {};
-
-  if (!partial || input.amount !== undefined) {
-    const amount = Number(input.amount);
-    if (!Number.isFinite(amount) || amount <= 0) throw new Error("Amount must be greater than zero.");
-    values.amount = amount;
-  }
-  if (!partial || input.source !== undefined) {
-    const source = asString(input.source);
-    if (!source) throw new Error("Source is required.");
-    values.source = source;
-  }
-  if (!partial || input.date !== undefined) {
-    const date = new Date(asString(input.date));
-    if (Number.isNaN(date.getTime())) throw new Error("A valid date is required.");
-    values.date = date;
-  }
-  if (!partial || input.paymentMode !== undefined) {
-    const paymentMode = asString(input.paymentMode);
-    if (!PAYMENT_MODES.includes(paymentMode as (typeof PAYMENT_MODES)[number])) throw new Error("Choose a valid payment mode.");
-    values.paymentMode = paymentMode;
-  }
-  if (input.category !== undefined || !partial) values.category = asString(input.category) || undefined;
-  if (input.note !== undefined || !partial) values.note = asString(input.note) || undefined;
-  if (input.bankAccount !== undefined || !partial) values.bankAccount = asString(input.bankAccount) || undefined;
-
-  return values;
-}
-
-export function serializeIncome(entry: {
-  _id: { toString(): string };
-  amount: number;
-  source: string;
-  category?: string;
-  date: Date;
-  note?: string;
-  paymentMode: string;
-  bankAccount?: { _id?: { toString(): string }; toString(): string } | null;
-}): IncomeRecord {
-  const bankAccount = entry.bankAccount && typeof entry.bankAccount === "object" && "_id" in entry.bankAccount
-    ? entry.bankAccount._id?.toString()
-    : entry.bankAccount?.toString();
-
-  return {
-    id: entry._id.toString(),
-    amount: entry.amount,
-    source: entry.source,
-    category: entry.category,
-    date: entry.date.toISOString(),
-    note: entry.note,
-    paymentMode: entry.paymentMode,
-    bankAccount: bankAccount ?? null,
-  };
-}
-
-export async function getUserId() {
-  const session = await requireAuth();
-  if (typeof session.userId !== "string") throw new Error("Unauthorized");
-  return session.userId;
-}
-
-export async function ensureBankAccount(userId: string, bankAccount?: unknown) {
-  const bankAccountId = asString(bankAccount);
-  if (!bankAccountId) return undefined;
-  const account = await BankAccountModel.findOne({ _id: bankAccountId, user: userId }).select("_id").lean();
-  if (!account) throw new Error("The selected bank account was not found.");
-  return bankAccountId;
-}
 
 export async function GET(request: NextRequest) {
   try {
