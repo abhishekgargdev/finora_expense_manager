@@ -1,8 +1,9 @@
-import type { Metadata } from "next";
-import { Space_Grotesk, Inter } from "next/font/google";
-import { ThemeProvider } from "@/components/theme-provider";
-import { Toaster } from "@/components/ui/sonner";
-import "./globals.css";
+import type { Metadata, Viewport } from 'next';
+import { Space_Grotesk, Inter } from 'next/font/google';
+import { ThemeProvider } from '@/components/theme-provider';
+import { Toaster } from '@/components/ui/sonner';
+import InstallAppBanner from '@/components/pwa/InstallAppBanner';
+import './globals.css';
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-heading",
@@ -16,8 +17,25 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Expense Manager",
-  description: "Personal finance tracker",
+  title: 'Expense Manager',
+  description: 'Personal finance tracker',
+  manifest: '/manifest.webmanifest',
+  icons: {
+    icon: '/icons/icon-192.png',
+    apple: '/icons/icon-192.png',
+  },
+  appleWebApp: {
+    capable: true,
+    title: 'Expense Manager',
+    statusBarStyle: 'default',
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#0f766e',
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -26,6 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-full flex flex-col">
         <ThemeProvider>
           {children}
+          <InstallAppBanner />
           <Toaster richColors />
         </ThemeProvider>
       </body>
