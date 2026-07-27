@@ -1,8 +1,6 @@
 import connect, { mongoose } from "../lib/db";
 import { Schema, Model, Document } from "mongoose";
 
-await connect();
-
 export interface IUser {
   name: string;
   email: string;

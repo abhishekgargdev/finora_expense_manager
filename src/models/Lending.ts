@@ -1,8 +1,6 @@
 import connect, { mongoose } from "../lib/db";
 import { Schema, Model, Document, Types } from "mongoose";
 
-await connect();
-
 export type LendingType = "Given" | "Taken";
 export type LendingStatus = "Pending" | "Partially Returned" | "Settled";
 

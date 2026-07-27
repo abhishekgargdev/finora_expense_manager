@@ -2,8 +2,6 @@ import connect, { mongoose } from "../lib/db";
 import { Schema, Model, Document, Types } from "mongoose";
 import BankAccountModel, { BankAccountDocument } from "./BankAccount";
 
-await connect();
-
 export type BankTxType = "Credit" | "Debit";
 export type BankTxSource = "Manual" | "Income" | "Expense" | "Lending" | "Transfer";
 

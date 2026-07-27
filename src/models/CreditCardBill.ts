@@ -1,8 +1,6 @@
 import connect, { mongoose } from "../lib/db";
 import { Schema, Model, Document, Types } from "mongoose";
 
-await connect();
-
 export interface ICreditCardBill {
   user: Types.ObjectId;
   creditCard: Types.ObjectId;

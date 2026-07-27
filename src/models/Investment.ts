@@ -1,8 +1,6 @@
 import connect, { mongoose } from "../lib/db";
 import { Schema, Model, Document, Types } from "mongoose";
 
-await connect();
-
 export type InvestmentType = "Mutual Fund" | "Stocks" | "FD" | "RD" | "Gold" | "Crypto" | "PPF" | "Other";
 
 export interface IInvestment {
