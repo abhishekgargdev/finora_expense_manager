@@ -128,3 +128,82 @@
     @apply font-sans;
   }
 }
+
+/* Design system additions ------------------------------------------------- */
+
+:root {
+  /* Application identity colors */
+  --primary: #0f766e; /* deep teal */
+  --primary-rgb: 15 118 110;
+  --secondary: #d97706; /* warm amber/gold */
+  --secondary-rgb: 217 119 6;
+
+  /* Semantic financial tokens */
+  --income: #16a34a; /* green-600 */
+  --income-rgb: 22 163 74;
+  --expense: #ef4444; /* red-500 */
+  --expense-rgb: 239 68 68;
+  --investment: #7c3aed; /* violet-600 */
+  --investment-rgb: 124 58 237;
+  --pending: #f59e0b; /* amber-500 */
+  --pending-rgb: 245 158 11;
+  --settled: #10b981; /* emerald-500 */
+  --settled-rgb: 16 185 129;
+
+  /* Elevation */
+  --card-bg: var(--card);
+  --card-border: rgba(15, 23, 42, 0.06);
+
+  /* subtle background blob */
+  --bg-blob: radial-gradient(600px 400px at 10% 10%, rgba(var(--primary-rgb), 0.06), transparent 20%);
+}
+
+.dark {
+  --primary: #2dd4bf;
+  --primary-rgb: 45 212 191;
+}
+
+/* Expose semantic utilities (text-/bg- classes) using simple CSS fallbacks
+   Tailwind utilities are also added in tailwind.config to reference these vars. */
+.text-income { color: var(--income); }
+.text-expense { color: var(--expense); }
+.text-investment { color: var(--investment); }
+.text-pending { color: var(--pending); }
+.text-settled { color: var(--settled); }
+.bg-income-10 { background-color: rgba(var(--income-rgb), 0.08); }
+.bg-expense-10 { background-color: rgba(var(--expense-rgb), 0.08); }
+.bg-investment-10 { background-color: rgba(var(--investment-rgb), 0.06); }
+.bg-pending-10 { background-color: rgba(var(--pending-rgb), 0.06); }
+.bg-settled-10 { background-color: rgba(var(--settled-rgb), 0.06); }
+
+/* Card style */
+.card {
+  background-color: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 6px 18px rgba(2,6,23,0.06);
+}
+
+/* Money typography */
+.money, .tabular-nums {
+  font-variant-numeric: tabular-nums;
+  -moz-font-feature-settings: "tnum" 1;
+  -webkit-font-feature-settings: "tnum" 1;
+}
+
+/* subtle app background treatment */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: var(--bg-blob);
+  z-index: 0;
+}
+
+/* Component scaffolding */
+.finance-stat-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
