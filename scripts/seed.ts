@@ -9,15 +9,15 @@
  *   .env or ensure environment variables are set. We load dotenv here to help.
  */
 
-import fs from 'fs';
-import path from 'path';
-import dotenv from 'dotenv';
-import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
-import UserModel from '../src/models/User';
+import fs from "fs";
+import path from "path";
+import dotenv from "dotenv";
+import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
+import UserModel from "../src/models/User";
 
 // Load .env.local first, then fall back to .env if needed.
-const envPath = path.resolve(process.cwd(), '.env.local');
+const envPath = path.resolve(process.cwd(), ".env.local");
 if (fs.existsSync(envPath)) {
   dotenv.config({ path: envPath });
 } else {
@@ -25,9 +25,9 @@ if (fs.existsSync(envPath)) {
 }
 
 // Edit these values before running the script
-const NAME = 'Abhishek Garg';
-const EMAIL = 'abhishekgarg959@gmail.com';
-const PASSWORD = 'Abhishek@2000';
+const NAME = "Abhishek Garg";
+const EMAIL = "abhishekgarg959@gmail.com";
+const PASSWORD = "Abhishek@2000";
 
 // Set to true to update password if user exists
 const SHOULD_UPDATE_IF_EXISTS = false;
@@ -35,12 +35,12 @@ const SHOULD_UPDATE_IF_EXISTS = false;
 async function main() {
   const MONGODB_URI = process.env.MONGODB_URI;
   if (!MONGODB_URI) {
-    console.error('MONGODB_URI is not defined. Copy .env.local to .env or set the variable.');
+    console.error("MONGODB_URI is not defined. Copy .env.local to .env or set the variable.");
     process.exit(1);
   }
 
   await mongoose.connect(MONGODB_URI);
-  console.log('Connected to MongoDB');
+  console.log("Connected to MongoDB");
 
   const email = EMAIL.toLowerCase();
   const existing = await UserModel.findOne({ email }).exec();

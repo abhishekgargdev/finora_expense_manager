@@ -1,15 +1,15 @@
-import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 interface PageSkeletonProps {
-  variant?: 'cards' | 'table' | 'chart';
+  variant?: "cards" | "table" | "chart";
   className?: string;
 }
 
-export default function PageSkeleton({ variant = 'cards', className }: PageSkeletonProps) {
-  if (variant === 'table') {
+export default function PageSkeleton({ variant = "cards", className }: PageSkeletonProps) {
+  if (variant === "table") {
     return (
-      <div className={cn('space-y-4', className)}>
+      <div className={cn("space-y-4", className)}>
         <div className="card p-4">
           <div className="mb-4 flex items-center justify-between gap-4">
             <Skeleton className="h-6 w-1/3" />
@@ -30,9 +30,9 @@ export default function PageSkeleton({ variant = 'cards', className }: PageSkele
     );
   }
 
-  if (variant === 'chart') {
+  if (variant === "chart") {
     return (
-      <div className={cn('space-y-4', className)}>
+      <div className={cn("space-y-4", className)}>
         <div className="card p-4">
           <div className="mb-4 flex items-center justify-between gap-4">
             <Skeleton className="h-6 w-1/4" />
@@ -49,7 +49,7 @@ export default function PageSkeleton({ variant = 'cards', className }: PageSkele
   }
 
   return (
-    <div className={cn('grid gap-4 md:grid-cols-2 xl:grid-cols-3', className)}>
+    <div className={cn("grid gap-4 md:grid-cols-2 xl:grid-cols-3", className)}>
       {[...Array(3)].map((_, index) => (
         <div key={index} className="card p-5">
           <div className="mb-4 flex items-center justify-between gap-3">

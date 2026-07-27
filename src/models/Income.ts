@@ -32,7 +32,8 @@ const incomeSchema = new Schema<IncomeDocument>(
 
 incomeSchema.index({ user: 1, date: -1 });
 
-const IncomeModel = (mongoose.models.Income as Model<IncomeDocument>) || mongoose.model<IncomeDocument>("Income", incomeSchema);
+const IncomeModel =
+  (mongoose.models.Income as Model<IncomeDocument>) || mongoose.model<IncomeDocument>("Income", incomeSchema);
 
 export { IncomeModel };
 export default IncomeModel;

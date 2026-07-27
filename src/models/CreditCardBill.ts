@@ -29,7 +29,9 @@ const billSchema = new Schema<CreditCardBillDocument>(
   { timestamps: { createdAt: true, updatedAt: false } }
 );
 
-const CreditCardBillModel = (mongoose.models.CreditCardBill as Model<CreditCardBillDocument>) || mongoose.model<CreditCardBillDocument>("CreditCardBill", billSchema);
+const CreditCardBillModel =
+  (mongoose.models.CreditCardBill as Model<CreditCardBillDocument>) ||
+  mongoose.model<CreditCardBillDocument>("CreditCardBill", billSchema);
 
 export { CreditCardBillModel };
 export default CreditCardBillModel;

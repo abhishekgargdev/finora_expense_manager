@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from "react";
 
 export type AsyncState<T> = {
   data: T | null;
@@ -29,7 +29,7 @@ export default function useAsync<T>(asyncFunction: () => Promise<T>, immediate =
       setData(result);
       return result;
     } catch (err) {
-      const error = err instanceof Error ? err : new Error('Request failed');
+      const error = err instanceof Error ? err : new Error("Request failed");
       setError(error);
       throw error;
     } finally {

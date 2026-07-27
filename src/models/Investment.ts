@@ -20,7 +20,11 @@ export type InvestmentDocument = Document & IInvestment;
 const investmentSchema = new Schema<InvestmentDocument>(
   {
     user: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
-    type: { type: String, enum: ["Mutual Fund", "Stocks", "FD", "RD", "Gold", "Crypto", "PPF", "Other"], required: true },
+    type: {
+      type: String,
+      enum: ["Mutual Fund", "Stocks", "FD", "RD", "Gold", "Crypto", "PPF", "Other"],
+      required: true,
+    },
     name: { type: String },
     amountInvested: { type: Number, required: true },
     currentValue: { type: Number },
@@ -32,7 +36,9 @@ const investmentSchema = new Schema<InvestmentDocument>(
 
 investmentSchema.index({ user: 1, date: -1 });
 
-const InvestmentModel = (mongoose.models.Investment as Model<InvestmentDocument>) || mongoose.model<InvestmentDocument>("Investment", investmentSchema);
+const InvestmentModel =
+  (mongoose.models.Investment as Model<InvestmentDocument>) ||
+  mongoose.model<InvestmentDocument>("Investment", investmentSchema);
 
 export { InvestmentModel };
 export default InvestmentModel;

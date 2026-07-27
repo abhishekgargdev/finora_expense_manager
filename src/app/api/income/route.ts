@@ -7,7 +7,6 @@ import IncomeModel from "@/models/Income";
 
 import { ensureBankAccount, getUserId, parseIncome, serializeIncome, text as asString } from "@/lib/income-api";
 
-
 export async function GET(request: NextRequest) {
   try {
     await connect();
@@ -48,7 +47,10 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     if (error instanceof Response) return error;
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to load income." }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unable to load income." },
+      { status: 500 }
+    );
   }
 }
 
@@ -76,6 +78,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ income: serializeIncome(income) }, { status: 201 });
   } catch (error) {
     if (error instanceof Response) return error;
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to create income." }, { status: 400 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unable to create income." },
+      { status: 400 }
+    );
   }
 }

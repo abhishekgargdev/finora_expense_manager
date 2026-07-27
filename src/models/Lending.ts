@@ -4,6 +4,12 @@ import { Schema, Model, Document, Types } from "mongoose";
 export type LendingType = "Given" | "Taken";
 export type LendingStatus = "Pending" | "Partially Returned" | "Settled";
 
+export interface IRepayment {
+  amount: number;
+  date: Date;
+  bankAccount?: Types.ObjectId | string | null;
+}
+
 export interface ILending {
   user: Types.ObjectId;
   person: string;
@@ -14,6 +20,7 @@ export interface ILending {
   date: Date;
   dueDate?: Date | null;
   note?: string;
+  repayments?: IRepayment[];
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -31,6 +38,13 @@ const lendingSchema = new Schema<LendingDocument>(
     date: { type: Date, required: true, index: true },
     dueDate: { type: Date },
     note: { type: String },
+    repayments: [
+      {
+        amount: { type: Number, required: true },
+        date: { type: Date, required: true },
+        bankAccount: { type: Schema.Types.ObjectId, ref: "BankAccount" },
+      },
+    ],
   },
   { timestamps: true }
 );
@@ -48,7 +62,8 @@ lendingSchema.pre<LendingDocument>("save", function () {
 
 lendingSchema.index({ user: 1, date: -1 });
 
-const LendingModel = (mongoose.models.Lending as Model<LendingDocument>) || mongoose.model<LendingDocument>("Lending", lendingSchema);
+const LendingModel =
+  (mongoose.models.Lending as Model<LendingDocument>) || mongoose.model<LendingDocument>("Lending", lendingSchema);
 
 export { LendingModel };
 export default LendingModel;

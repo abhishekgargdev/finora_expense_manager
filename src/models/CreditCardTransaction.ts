@@ -31,7 +31,9 @@ const ccTxSchema = new Schema<CreditCardTransactionDocument>(
 
 ccTxSchema.index({ user: 1, date: -1 });
 
-const CreditCardTransactionModel = (mongoose.models.CreditCardTransaction as Model<CreditCardTransactionDocument>) || mongoose.model<CreditCardTransactionDocument>("CreditCardTransaction", ccTxSchema);
+const CreditCardTransactionModel =
+  (mongoose.models.CreditCardTransaction as Model<CreditCardTransactionDocument>) ||
+  mongoose.model<CreditCardTransactionDocument>("CreditCardTransaction", ccTxSchema);
 
 export { CreditCardTransactionModel };
 export default CreditCardTransactionModel;

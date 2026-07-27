@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { AnimatePresence, motion } from 'framer-motion';
-import Loader from './Loader';
-import { cn } from '@/lib/utils';
+import { AnimatePresence, motion } from "framer-motion";
+import Loader from "./Loader";
+import { cn } from "@/lib/utils";
 
 interface LoaderOverlayProps {
   show: boolean;
@@ -16,8 +16,8 @@ export default function LoaderOverlay({ show, label, className }: LoaderOverlayP
       {show ? (
         <motion.div
           className={cn(
-            'fixed inset-0 z-[1000] flex items-center justify-center bg-background/80 backdrop-blur-sm',
-            className,
+            "fixed inset-0 z-[1000] flex items-center justify-center bg-background/80 backdrop-blur-sm",
+            className
           )}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -31,7 +31,7 @@ export default function LoaderOverlay({ show, label, className }: LoaderOverlayP
             exit={{ scale: 0.96, opacity: 0 }}
             transition={{ duration: 0.2 }}
           >
-            <Loader size="lg" label={label ?? 'Processing…'} />
+            <Loader size="lg" label={label ?? "Processing…"} />
           </motion.div>
         </motion.div>
       ) : null}

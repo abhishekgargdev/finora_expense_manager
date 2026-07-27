@@ -1,38 +1,38 @@
-'use client';
+"use client";
 
-import { motion } from 'framer-motion';
-import { cn } from '@/lib/utils';
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 const sizeMap = {
-  sm: 'w-12 h-12',
-  md: 'w-16 h-16',
-  lg: 'w-24 h-24',
+  sm: "w-12 h-12",
+  md: "w-16 h-16",
+  lg: "w-24 h-24",
 };
 
 const ringMap = {
-  sm: 'w-16 h-16',
-  md: 'w-20 h-20',
-  lg: 'w-28 h-28',
+  sm: "w-16 h-16",
+  md: "w-20 h-20",
+  lg: "w-28 h-28",
 };
 
 interface LoaderProps {
-  size?: 'sm' | 'md' | 'lg';
+  size?: "sm" | "md" | "lg";
   label?: string;
   className?: string;
 }
 
-export default function Loader({ size = 'md', label, className }: LoaderProps) {
+export default function Loader({ size = "md", label, className }: LoaderProps) {
   return (
-    <div className={cn('flex flex-col items-center justify-center text-center', className)}>
+    <div className={cn("flex flex-col items-center justify-center text-center", className)}>
       <motion.div
-        className={cn('relative flex items-center justify-center rounded-full bg-primary/10', sizeMap[size])}
+        className={cn("relative flex items-center justify-center rounded-full bg-primary/10", sizeMap[size])}
         animate={{ rotate: [0, 360] }}
-        transition={{ repeat: Infinity, duration: 1.6, ease: 'linear' }}
+        transition={{ repeat: Infinity, duration: 1.6, ease: "linear" }}
       >
         <motion.div
-          className={cn('absolute rounded-full border border-primary/20', ringMap[size])}
+          className={cn("absolute rounded-full border border-primary/20", ringMap[size])}
           animate={{ scale: [0.9, 1.08, 0.9], opacity: [0.75, 0.2, 0.75] }}
-          transition={{ repeat: Infinity, duration: 1.6, ease: 'easeInOut' }}
+          transition={{ repeat: Infinity, duration: 1.6, ease: "easeInOut" }}
         />
         <motion.svg
           width="48"
@@ -42,7 +42,7 @@ export default function Loader({ size = 'md', label, className }: LoaderProps) {
           className="relative z-10"
           initial={{ scale: 0.92 }}
           animate={{ scale: [0.92, 1.0, 0.92] }}
-          transition={{ repeat: Infinity, duration: 1.2, ease: 'easeInOut' }}
+          transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut" }}
         >
           <circle cx="32" cy="32" r="24" fill="var(--primary)" opacity="0.12" />
           <path

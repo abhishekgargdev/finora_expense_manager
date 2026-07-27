@@ -1,9 +1,73 @@
 import { requireAuth } from "@/lib/auth";
 
 export const ACCOUNT_TYPES = ["Savings", "Current", "Other"] as const;
-type Input = { bankName?: unknown; accountName?: unknown; accountType?: unknown; last4Digits?: unknown; openingBalance?: unknown; themeColor?: unknown };
-export type AccountRecord = { id: string; bankName: string; accountName?: string; accountType: "Savings" | "Current" | "Other"; last4Digits?: string; currentBalance: number; openingBalance: number; themeColor?: string };
-const text = (value: unknown) => typeof value === "string" ? value.trim() : "";
-export function parseAccount(input: Input, partial = false) { const values: Record<string, unknown> = {}; if (!partial || input.bankName !== undefined) { const bankName = text(input.bankName); if (!bankName) throw new Error("Bank name is required."); values.bankName = bankName; } if (!partial || input.accountType !== undefined) { const accountType = text(input.accountType); if (!ACCOUNT_TYPES.includes(accountType as (typeof ACCOUNT_TYPES)[number])) throw new Error("Choose a valid account type."); values.accountType = accountType; } if (!partial || input.openingBalance !== undefined) { const openingBalance = Number(input.openingBalance); if (!Number.isFinite(openingBalance)) throw new Error("Opening balance must be valid."); values.openingBalance = openingBalance; } if (input.accountName !== undefined || !partial) values.accountName = text(input.accountName) || undefined; if (input.last4Digits !== undefined || !partial) { const last4Digits = text(input.last4Digits); if (last4Digits && !/^\d{4}$/.test(last4Digits)) throw new Error("Last four digits must contain four numbers."); values.last4Digits = last4Digits || undefined; } if (input.themeColor !== undefined || !partial) values.themeColor = text(input.themeColor) || undefined; return values; }
-export const serializeAccount = (item: { _id: { toString(): string }; bankName: string; accountName?: string; accountType: AccountRecord["accountType"]; last4Digits?: string; currentBalance: number; openingBalance?: number; themeColor?: string }): AccountRecord => ({ id: item._id.toString(), bankName: item.bankName, accountName: item.accountName, accountType: item.accountType, last4Digits: item.last4Digits, currentBalance: item.currentBalance, openingBalance: item.openingBalance ?? 0, themeColor: item.themeColor });
-export async function getUserId() { const session = await requireAuth(); if (typeof session.userId !== "string") throw new Error("Unauthorized"); return session.userId; }
+type Input = {
+  bankName?: unknown;
+  accountName?: unknown;
+  accountType?: unknown;
+  last4Digits?: unknown;
+  openingBalance?: unknown;
+  themeColor?: unknown;
+};
+export type AccountRecord = {
+  id: string;
+  bankName: string;
+  accountName?: string;
+  accountType: "Savings" | "Current" | "Other";
+  last4Digits?: string;
+  currentBalance: number;
+  openingBalance: number;
+  themeColor?: string;
+};
+const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
+export function parseAccount(input: Input, partial = false) {
+  const values: Record<string, unknown> = {};
+  if (!partial || input.bankName !== undefined) {
+    const bankName = text(input.bankName);
+    if (!bankName) throw new Error("Bank name is required.");
+    values.bankName = bankName;
+  }
+  if (!partial || input.accountType !== undefined) {
+    const accountType = text(input.accountType);
+    if (!ACCOUNT_TYPES.includes(accountType as (typeof ACCOUNT_TYPES)[number]))
+      throw new Error("Choose a valid account type.");
+    values.accountType = accountType;
+  }
+  if (!partial || input.openingBalance !== undefined) {
+    const openingBalance = Number(input.openingBalance);
+    if (!Number.isFinite(openingBalance)) throw new Error("Opening balance must be valid.");
+    values.openingBalance = openingBalance;
+  }
+  if (input.accountName !== undefined || !partial) values.accountName = text(input.accountName) || undefined;
+  if (input.last4Digits !== undefined || !partial) {
+    const last4Digits = text(input.last4Digits);
+    if (last4Digits && !/^\d{4}$/.test(last4Digits)) throw new Error("Last four digits must contain four numbers.");
+    values.last4Digits = last4Digits || undefined;
+  }
+  if (input.themeColor !== undefined || !partial) values.themeColor = text(input.themeColor) || undefined;
+  return values;
+}
+export const serializeAccount = (item: {
+  _id: { toString(): string };
+  bankName: string;
+  accountName?: string;
+  accountType: AccountRecord["accountType"];
+  last4Digits?: string;
+  currentBalance: number;
+  openingBalance?: number;
+  themeColor?: string;
+}): AccountRecord => ({
+  id: item._id.toString(),
+  bankName: item.bankName,
+  accountName: item.accountName,
+  accountType: item.accountType,
+  last4Digits: item.last4Digits,
+  currentBalance: item.currentBalance,
+  openingBalance: item.openingBalance ?? 0,
+  themeColor: item.themeColor,
+});
+export async function getUserId() {
+  const session = await requireAuth();
+  if (typeof session.userId !== "string") throw new Error("Unauthorized");
+  return session.userId;
+}

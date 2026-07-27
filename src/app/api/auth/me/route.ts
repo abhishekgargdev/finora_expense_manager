@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
-import connect from '../../../../lib/db';
-import UserModel from '../../../../models/User';
-import { getSession } from '../../../../lib/auth';
+import { NextResponse } from "next/server";
+import connect from "../../../../lib/db";
+import UserModel from "../../../../models/User";
+import { getSession } from "../../../../lib/auth";
 
 await connect();
 

@@ -18,19 +18,40 @@ async function updateIncome(request: NextRequest, context: RouteContext<"/api/in
     const { id } = await context.params;
     const income = await getIncome(id, userId);
     const input = parseIncome(await request.json(), true);
-    const nextBankAccount = input.bankAccount === undefined ? income.bankAccount?.toString() : await ensureBankAccount(userId, input.bankAccount);
+    const nextBankAccount =
+      input.bankAccount === undefined
+        ? income.bankAccount?.toString()
+        : await ensureBankAccount(userId, input.bankAccount);
     const nextAmount = typeof input.amount === "number" ? input.amount : income.amount;
     const bankChanged = nextBankAccount !== income.bankAccount?.toString() || nextAmount !== income.amount;
 
     if (bankChanged && income.bankAccount) {
-      await BankTransactionModel.recordTransaction({ user: userId, bankAccount: income.bankAccount, type: "Debit", amount: income.amount, description: `Income adjustment: ${income.source}`, date: new Date(), source: "Income", refId: income._id });
+      await BankTransactionModel.recordTransaction({
+        user: userId,
+        bankAccount: income.bankAccount,
+        type: "Debit",
+        amount: income.amount,
+        description: `Income adjustment: ${income.source}`,
+        date: new Date(),
+        source: "Income",
+        refId: income._id,
+      });
     }
 
     Object.assign(income, input, { bankAccount: nextBankAccount });
     await income.save();
 
     if (bankChanged && nextBankAccount) {
-      await BankTransactionModel.recordTransaction({ user: userId, bankAccount: nextBankAccount, type: "Credit", amount: income.amount, description: `Income: ${income.source}`, date: income.date, source: "Income", refId: income._id });
+      await BankTransactionModel.recordTransaction({
+        user: userId,
+        bankAccount: nextBankAccount,
+        type: "Credit",
+        amount: income.amount,
+        description: `Income: ${income.source}`,
+        date: income.date,
+        source: "Income",
+        refId: income._id,
+      });
     }
 
     return NextResponse.json({ income: serializeIncome(income) });
@@ -57,7 +78,16 @@ export async function DELETE(_: NextRequest, context: RouteContext<"/api/income/
     const income = await getIncome(id, userId);
 
     if (income.bankAccount) {
-      await BankTransactionModel.recordTransaction({ user: userId, bankAccount: income.bankAccount, type: "Debit", amount: income.amount, description: `Income removal: ${income.source}`, date: new Date(), source: "Income", refId: income._id });
+      await BankTransactionModel.recordTransaction({
+        user: userId,
+        bankAccount: income.bankAccount,
+        type: "Debit",
+        amount: income.amount,
+        description: `Income removal: ${income.source}`,
+        date: new Date(),
+        source: "Income",
+        refId: income._id,
+      });
     }
     await income.deleteOne();
     return NextResponse.json({ success: true });

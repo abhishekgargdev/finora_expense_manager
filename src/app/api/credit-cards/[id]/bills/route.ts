@@ -5,5 +5,53 @@ import CreditCardBillModel from "@/models/CreditCardBill";
 import CreditCardModel from "@/models/CreditCard";
 import CreditCardTransactionModel from "@/models/CreditCardTransaction";
 import { serializeBill } from "@/lib/credit-card-bills";
-export async function GET(_: NextRequest, context: RouteContext<"/api/credit-cards/[id]/bills">) { try { await connect(); const userId = await getUserId(); const { id } = await context.params; if (!await CreditCardModel.exists({ _id: id, user: userId })) return NextResponse.json({ error: "Credit card not found." }, { status: 404 }); const bills = await CreditCardBillModel.find({ user: userId, creditCard: id }).sort({ dueDate: -1 }).lean(); return NextResponse.json({ bills: bills.map(serializeBill) }); } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to load bills." }, { status: 400 }); } }
-export async function POST(request: NextRequest, context: RouteContext<"/api/credit-cards/[id]/bills">) { try { await connect(); const userId = await getUserId(); const { id } = await context.params; const card = await CreditCardModel.findOne({ _id: id, user: userId }); if (!card) return NextResponse.json({ error: "Credit card not found." }, { status: 404 }); const body = await request.json().catch(() => ({})); const billingMonth = typeof body.billingMonth === "string" && /^\d{4}-\d{2}$/.test(body.billingMonth) ? body.billingMonth : new Date().toISOString().slice(0, 7); if (await CreditCardBillModel.exists({ user: userId, creditCard: id, billingMonth })) throw new Error("A bill already exists for this billing month."); const transactions = await CreditCardTransactionModel.find({ user: userId, creditCard: id, billed: false }); const totalAmount = transactions.reduce((sum, item) => sum + item.amount, 0); if (!totalAmount) throw new Error("There are no unbilled transactions."); const [year, month] = billingMonth.split("-").map(Number); const dueDate = new Date(Date.UTC(year, month - 1, Math.min(card.dueDay, new Date(Date.UTC(year, month, 0)).getUTCDate()))); const bill = await CreditCardBillModel.create({ user: userId, creditCard: id, billingMonth, totalAmount, dueDate }); await CreditCardTransactionModel.updateMany({ _id: { $in: transactions.map((item) => item._id) } }, { billed: true, billingMonth }); return NextResponse.json({ bill: serializeBill(bill) }, { status: 201 }); } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to generate bill." }, { status: 400 }); } }
+export async function GET(_: NextRequest, context: RouteContext<"/api/credit-cards/[id]/bills">) {
+  try {
+    await connect();
+    const userId = await getUserId();
+    const { id } = await context.params;
+    if (!(await CreditCardModel.exists({ _id: id, user: userId })))
+      return NextResponse.json({ error: "Credit card not found." }, { status: 404 });
+    const bills = await CreditCardBillModel.find({ user: userId, creditCard: id }).sort({ dueDate: -1 }).lean();
+    return NextResponse.json({ bills: bills.map(serializeBill) });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unable to load bills." },
+      { status: 400 }
+    );
+  }
+}
+export async function POST(request: NextRequest, context: RouteContext<"/api/credit-cards/[id]/bills">) {
+  try {
+    await connect();
+    const userId = await getUserId();
+    const { id } = await context.params;
+    const card = await CreditCardModel.findOne({ _id: id, user: userId });
+    if (!card) return NextResponse.json({ error: "Credit card not found." }, { status: 404 });
+    const body = await request.json().catch(() => ({}));
+    const billingMonth =
+      typeof body.billingMonth === "string" && /^\d{4}-\d{2}$/.test(body.billingMonth)
+        ? body.billingMonth
+        : new Date().toISOString().slice(0, 7);
+    if (await CreditCardBillModel.exists({ user: userId, creditCard: id, billingMonth }))
+      throw new Error("A bill already exists for this billing month.");
+    const transactions = await CreditCardTransactionModel.find({ user: userId, creditCard: id, billed: false });
+    const totalAmount = transactions.reduce((sum, item) => sum + item.amount, 0);
+    if (!totalAmount) throw new Error("There are no unbilled transactions.");
+    const [year, month] = billingMonth.split("-").map(Number);
+    const dueDate = new Date(
+      Date.UTC(year, month - 1, Math.min(card.dueDay, new Date(Date.UTC(year, month, 0)).getUTCDate()))
+    );
+    const bill = await CreditCardBillModel.create({ user: userId, creditCard: id, billingMonth, totalAmount, dueDate });
+    await CreditCardTransactionModel.updateMany(
+      { _id: { $in: transactions.map((item) => item._id) } },
+      { billed: true, billingMonth }
+    );
+    return NextResponse.json({ bill: serializeBill(bill) }, { status: 201 });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unable to generate bill." },
+      { status: 400 }
+    );
+  }
+}

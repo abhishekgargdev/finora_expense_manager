@@ -58,16 +58,19 @@ export function useIncome(filters: IncomeFilters = {}) {
     })();
   }, [load]);
 
-  const mutate = React.useCallback(async <T,>(request: () => Promise<Response>) => {
-    setIsMutating(true);
-    try {
-      const payload = await readJson(await request());
-      await load();
-      return payload as T;
-    } finally {
-      setIsMutating(false);
-    }
-  }, [load]);
+  const mutate = React.useCallback(
+    async <T>(request: () => Promise<Response>) => {
+      setIsMutating(true);
+      try {
+        const payload = await readJson(await request());
+        await load();
+        return payload as T;
+      } finally {
+        setIsMutating(false);
+      }
+    },
+    [load]
+  );
 
   return {
     income,
@@ -75,8 +78,22 @@ export function useIncome(filters: IncomeFilters = {}) {
     isLoading,
     isMutating,
     refetch: load,
-    create: (input: IncomeInput) => mutate<{ income: IncomeEntry }>(() => fetch("/api/income", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) })),
-    update: (id: string, input: Partial<IncomeInput>) => mutate<{ income: IncomeEntry }>(() => fetch(`/api/income/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) })),
+    create: (input: IncomeInput) =>
+      mutate<{ income: IncomeEntry }>(() =>
+        fetch("/api/income", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(input),
+        })
+      ),
+    update: (id: string, input: Partial<IncomeInput>) =>
+      mutate<{ income: IncomeEntry }>(() =>
+        fetch(`/api/income/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(input),
+        })
+      ),
     remove: (id: string) => mutate<{ success: boolean }>(() => fetch(`/api/income/${id}`, { method: "DELETE" })),
   };
 }

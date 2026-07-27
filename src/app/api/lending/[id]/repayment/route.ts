@@ -7,13 +7,44 @@ import LendingModel from "@/models/Lending";
 
 export async function POST(request: NextRequest, context: RouteContext<"/api/lending/[id]/repayment">) {
   try {
-    await connect(); const userId = await getUserId(); const { id } = await context.params; const body = await request.json(); const amount = Number(body.amount);
+    await connect();
+    const userId = await getUserId();
+    const { id } = await context.params;
+    const body = await request.json();
+    const amount = Number(body.amount);
     if (!Number.isFinite(amount) || amount <= 0) throw new Error("Repayment amount must be greater than zero.");
-    const lending = await LendingModel.findOne({ _id: id, user: userId }); if (!lending) return NextResponse.json({ error: "Lending record not found." }, { status: 404 });
-    if (lending.amountReturned + amount > lending.amount) throw new Error("Repayment cannot exceed the pending amount.");
-    const bankAccount = await ensureBankAccount(userId, body.bankAccount); const repaymentDate = body.date ? new Date(String(body.date)) : new Date(); if (Number.isNaN(repaymentDate.getTime())) throw new Error("A valid repayment date is required.");
-    lending.amountReturned += amount; await lending.save();
-    if (bankAccount) await BankTransactionModel.recordTransaction({ user: userId, bankAccount, type: lending.type === "Given" ? "Credit" : "Debit", amount, date: repaymentDate, description: `${lending.type === "Given" ? "Lending repayment received from" : "Lending repayment to"} ${lending.person}`, source: "Lending", refId: lending._id });
+    const lending = await LendingModel.findOne({ _id: id, user: userId });
+    if (!lending) return NextResponse.json({ error: "Lending record not found." }, { status: 404 });
+    if (lending.amountReturned + amount > lending.amount)
+      throw new Error("Repayment cannot exceed the pending amount.");
+    const bankAccount = await ensureBankAccount(userId, body.bankAccount);
+    const repaymentDate = body.date ? new Date(String(body.date)) : new Date();
+    if (Number.isNaN(repaymentDate.getTime())) throw new Error("A valid repayment date is required.");
+    lending.amountReturned += amount;
+    if (!lending.repayments) lending.repayments = [];
+    lending.repayments.push({
+      amount,
+      date: repaymentDate,
+      bankAccount: bankAccount || undefined,
+    });
+    await lending.save();
+    if (bankAccount)
+      await BankTransactionModel.recordTransaction({
+        user: userId,
+        bankAccount,
+        type: lending.type === "Given" ? "Credit" : "Debit",
+        amount,
+        date: repaymentDate,
+        description: `${lending.type === "Given" ? "Lending repayment received from" : "Lending repayment to"} ${lending.person}`,
+        source: "Lending",
+        refId: lending._id,
+      });
     return NextResponse.json({ lending: serializeLending(lending) });
-  } catch (error) { if (error instanceof Response) return error; return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to record repayment." }, { status: 400 }); }
+  } catch (error) {
+    if (error instanceof Response) return error;
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unable to record repayment." },
+      { status: 400 }
+    );
+  }
 }

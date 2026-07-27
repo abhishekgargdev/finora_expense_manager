@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 type User = { name: string; email: string } | null;
 
@@ -11,7 +11,7 @@ export default function useUser() {
     let mounted = true;
     (async () => {
       try {
-        const res = await fetch('/api/auth/me');
+        const res = await fetch("/api/auth/me");
         const json = await res.json();
         if (!mounted) return;
         setUser(json.user ?? null);

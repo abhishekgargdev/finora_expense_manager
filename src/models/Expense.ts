@@ -2,15 +2,7 @@ import connect, { mongoose } from "../lib/db";
 import { Schema, Model, Document, Types } from "mongoose";
 
 export type ExpenseCategory =
-  | "Food"
-  | "Travel"
-  | "Rent"
-  | "Utilities"
-  | "Shopping"
-  | "Health"
-  | "Entertainment"
-  | "Other"
-  | string;
+  "Food" | "Travel" | "Rent" | "Utilities" | "Shopping" | "Health" | "Entertainment" | "Other" | string;
 
 export interface IExpense {
   user: Types.ObjectId;
@@ -47,7 +39,8 @@ const expenseSchema = new Schema<ExpenseDocument>(
 
 expenseSchema.index({ user: 1, date: -1 });
 
-const ExpenseModel = (mongoose.models.Expense as Model<ExpenseDocument>) || mongoose.model<ExpenseDocument>("Expense", expenseSchema);
+const ExpenseModel =
+  (mongoose.models.Expense as Model<ExpenseDocument>) || mongoose.model<ExpenseDocument>("Expense", expenseSchema);
 
 export { ExpenseModel };
 export default ExpenseModel;

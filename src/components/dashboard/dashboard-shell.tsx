@@ -15,6 +15,7 @@ import {
   PiggyBank,
   Settings,
   Sun,
+  Tags,
   TrendingDown,
   TrendingUp,
   Upload,
@@ -53,6 +54,7 @@ const navigation = [
   { title: "Dashboard", href: "/dashboard", icon: Home },
   { title: "Income", href: "/income", icon: TrendingUp },
   { title: "Expenses", href: "/expenses", icon: TrendingDown },
+  { title: "Categories", href: "/categories", icon: Tags },
   { title: "Investments", href: "/investments", icon: PiggyBank },
   { title: "Lending", href: "/lending", icon: Handshake },
   { title: "Credit Cards", href: "/credit-cards", icon: CreditCard },
@@ -64,6 +66,7 @@ const routeTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/income": "Income",
   "/expenses": "Expenses",
+  "/categories": "Categories",
   "/investments": "Investments",
   "/lending": "Lending",
   "/credit-cards": "Credit Cards",
@@ -77,12 +80,14 @@ function isActiveRoute(pathname: string, href: string) {
 }
 
 function initials(name?: string | null) {
-  return name
-    ?.split(" ")
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase() || "U";
+  return (
+    name
+      ?.split(" ")
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "U"
+  );
 }
 
 export default function DashboardShell({ children }: { children: React.ReactNode }) {
@@ -108,10 +113,15 @@ export default function DashboardShell({ children }: { children: React.ReactNode
     <SidebarProvider defaultOpen>
       <Sidebar collapsible="icon" className="border-sidebar-border">
         <SidebarHeader className="h-16 justify-center border-b border-sidebar-border px-3">
-          <Link href="/dashboard" className="flex items-center gap-2 overflow-hidden font-heading font-semibold text-sidebar-foreground">
-            <span className="grid size-8 shrink-0 place-items-center rounded-md bg-primary text-sm font-bold text-primary-foreground">F</span>
+          <div
+            onClick={() => router.push("/dashboard")}
+            className="flex items-center gap-2 overflow-hidden font-heading font-semibold text-sidebar-foreground cursor-pointer"
+          >
+            <span className="grid size-8 shrink-0 place-items-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
+              F
+            </span>
             <span className="truncate group-data-[collapsible=icon]:hidden">Finora</span>
-          </Link>
+          </div>
         </SidebarHeader>
         <SidebarContent className="px-2 py-4">
           <SidebarGroup className="p-0">
@@ -128,10 +138,16 @@ export default function DashboardShell({ children }: { children: React.ReactNode
                         tooltip={item.title}
                         className={cn(
                           "relative h-10 overflow-hidden text-sidebar-foreground/70 hover:bg-primary/8 hover:text-primary",
-                          active && "bg-primary/10 font-medium text-primary hover:bg-primary/10 hover:text-primary",
+                          active && "bg-primary/10 font-medium text-primary hover:bg-primary/10 hover:text-primary"
                         )}
                       >
-                        {active && <motion.span layoutId="active-nav" className="absolute inset-0 rounded-md bg-primary/10" transition={{ type: "spring", stiffness: 420, damping: 32 }} />}
+                        {active && (
+                          <motion.span
+                            layoutId="active-nav"
+                            className="absolute inset-0 rounded-md bg-primary/10"
+                            transition={{ type: "spring", stiffness: 420, damping: 32 }}
+                          />
+                        )}
                         <Icon className="relative z-10" />
                         <span className="relative z-10">{item.title}</span>
                       </SidebarMenuButton>
@@ -149,11 +165,30 @@ export default function DashboardShell({ children }: { children: React.ReactNode
                 render={<Link href="/settings" />}
                 isActive={isActiveRoute(pathname, "/settings")}
                 tooltip="Settings"
-                className={cn("relative h-10 overflow-hidden text-sidebar-foreground/70 hover:bg-primary/8 hover:text-primary", isActiveRoute(pathname, "/settings") && "bg-primary/10 font-medium text-primary")}
+                className={cn(
+                  "relative h-10 overflow-hidden text-sidebar-foreground/70 hover:bg-primary/8 hover:text-primary",
+                  isActiveRoute(pathname, "/settings") && "bg-primary/10 font-medium text-primary"
+                )}
               >
-                {isActiveRoute(pathname, "/settings") && <motion.span layoutId="active-nav" className="absolute inset-0 rounded-md bg-primary/10" transition={{ type: "spring", stiffness: 420, damping: 32 }} />}
+                {isActiveRoute(pathname, "/settings") && (
+                  <motion.span
+                    layoutId="active-nav"
+                    className="absolute inset-0 rounded-md bg-primary/10"
+                    transition={{ type: "spring", stiffness: 420, damping: 32 }}
+                  />
+                )}
                 <Settings className="relative z-10" />
                 <span className="relative z-10">Settings</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={signOut}
+                tooltip="Sign out"
+                className="relative h-10 overflow-hidden text-sidebar-foreground/70 hover:bg-destructive/8 hover:text-destructive"
+              >
+                <LogOut className="relative z-10" />
+                <span className="relative z-10">Sign out</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -169,14 +204,27 @@ export default function DashboardShell({ children }: { children: React.ReactNode
           </div>
           <div className="flex items-center gap-2">
             <Tooltip>
-              <TooltipTrigger render={<Button variant="ghost" size="icon-sm" aria-label="Toggle color theme" onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")} />}>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Toggle color theme"
+                    onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+                  />
+                }
+              >
                 {resolvedTheme === "dark" ? <Sun /> : <Moon />}
               </TooltipTrigger>
               <TooltipContent>Toggle color theme</TooltipContent>
             </Tooltip>
             <DropdownMenu>
-              <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="rounded-full" aria-label="Open user menu" />}>
-                <Avatar><AvatarFallback>{initials(user?.name)}</AvatarFallback></Avatar>
+              <DropdownMenuTrigger
+                render={<Button variant="ghost" size="icon" className="rounded-full" aria-label="Open user menu" />}
+              >
+                <Avatar>
+                  <AvatarFallback>{initials(user?.name)}</AvatarFallback>
+                </Avatar>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel className="space-y-0.5 px-2 py-2">
@@ -184,14 +232,23 @@ export default function DashboardShell({ children }: { children: React.ReactNode
                   <p className="truncate text-xs font-normal text-muted-foreground">{user?.email ?? ""}</p>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive" onClick={signOut}><LogOut />Sign out</DropdownMenuItem>
+                <DropdownMenuItem variant="destructive" onClick={signOut}>
+                  <LogOut />
+                  Sign out
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </header>
         <div className="relative flex-1 p-4 md:p-6">
           <AnimatePresence mode="wait" initial={false}>
-            <motion.div key={pathname} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.18, ease: "easeOut" }}>
+            <motion.div
+              key={pathname}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+            >
               {children}
             </motion.div>
           </AnimatePresence>

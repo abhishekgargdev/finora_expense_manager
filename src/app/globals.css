@@ -165,27 +165,48 @@
 
 /* Expose semantic utilities (text-/bg- classes) using simple CSS fallbacks
    Tailwind utilities are also added in tailwind.config to reference these vars. */
-.text-income { color: var(--income); }
-.text-expense { color: var(--expense); }
-.text-investment { color: var(--investment); }
-.text-pending { color: var(--pending); }
-.text-settled { color: var(--settled); }
-.bg-income-10 { background-color: rgba(var(--income-rgb), 0.08); }
-.bg-expense-10 { background-color: rgba(var(--expense-rgb), 0.08); }
-.bg-investment-10 { background-color: rgba(var(--investment-rgb), 0.06); }
-.bg-pending-10 { background-color: rgba(var(--pending-rgb), 0.06); }
-.bg-settled-10 { background-color: rgba(var(--settled-rgb), 0.06); }
+.text-income {
+  color: var(--income);
+}
+.text-expense {
+  color: var(--expense);
+}
+.text-investment {
+  color: var(--investment);
+}
+.text-pending {
+  color: var(--pending);
+}
+.text-settled {
+  color: var(--settled);
+}
+.bg-income-10 {
+  background-color: rgba(var(--income-rgb), 0.08);
+}
+.bg-expense-10 {
+  background-color: rgba(var(--expense-rgb), 0.08);
+}
+.bg-investment-10 {
+  background-color: rgba(var(--investment-rgb), 0.06);
+}
+.bg-pending-10 {
+  background-color: rgba(var(--pending-rgb), 0.06);
+}
+.bg-settled-10 {
+  background-color: rgba(var(--settled-rgb), 0.06);
+}
 
 /* Card style */
 .card {
   background-color: var(--card-bg);
   border: 1px solid var(--card-border);
   border-radius: var(--radius-lg);
-  box-shadow: 0 6px 18px rgba(2,6,23,0.06);
+  box-shadow: 0 6px 18px rgba(2, 6, 23, 0.06);
 }
 
 /* Money typography */
-.money, .tabular-nums {
+.money,
+.tabular-nums {
   font-variant-numeric: tabular-nums;
   -moz-font-feature-settings: "tnum" 1;
   -webkit-font-feature-settings: "tnum" 1;

@@ -1,29 +1,29 @@
-import type { Metadata, Viewport } from 'next';
-import { ThemeProvider } from '@/components/theme-provider';
-import { Toaster } from '@/components/ui/sonner';
-import InstallAppBanner from '@/components/pwa/InstallAppBanner';
-import './globals.css';
+import type { Metadata, Viewport } from "next";
+import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/sonner";
+import InstallAppBanner from "@/components/pwa/InstallAppBanner";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: 'Expense Manager',
-  description: 'Personal finance tracker',
-  manifest: '/manifest.webmanifest',
+  title: "Expense Manager",
+  description: "Personal finance tracker",
+  manifest: "/manifest.webmanifest",
   icons: {
-    icon: '/icons/icon-192.png',
-    apple: '/icons/icon-192.png',
+    icon: "/icons/icon-192.png",
+    apple: "/icons/icon-192.png",
   },
   appleWebApp: {
     capable: true,
-    title: 'Expense Manager',
-    statusBarStyle: 'default',
+    title: "Expense Manager",
+    statusBarStyle: "default",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0f766e',
-  width: 'device-width',
+  themeColor: "#0f766e",
+  width: "device-width",
   initialScale: 1,
-  viewportFit: 'cover',
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

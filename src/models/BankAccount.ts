@@ -34,7 +34,9 @@ const bankAccountSchema = new Schema<BankAccountDocument>(
 
 bankAccountSchema.index({ user: 1, updatedAt: -1 });
 
-const BankAccountModel = (mongoose.models.BankAccount as Model<BankAccountDocument>) || mongoose.model<BankAccountDocument>("BankAccount", bankAccountSchema);
+const BankAccountModel =
+  (mongoose.models.BankAccount as Model<BankAccountDocument>) ||
+  mongoose.model<BankAccountDocument>("BankAccount", bankAccountSchema);
 
 export { BankAccountModel };
 export default BankAccountModel;

@@ -1,10 +1,10 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import MoneyText from './MoneyText';
-import useCountUp from '../../hooks/useCountUp';
-import { fadeInUp } from '../../lib/motion';
+import React from "react";
+import { motion } from "framer-motion";
+import MoneyText from "./MoneyText";
+import useCountUp from "../../hooks/useCountUp";
+import { fadeInUp } from "../../lib/motion";
 
-type Trend = { percent: number; direction: 'up' | 'down' };
+type Trend = { percent: number; direction: "up" | "down" };
 
 type Props = {
   icon?: React.ReactNode;
@@ -12,13 +12,13 @@ type Props = {
   value: number;
   currency?: string;
   trend?: Trend;
-  accent?: 'primary' | 'secondary' | string;
+  accent?: "primary" | "secondary" | string;
 };
 
-export default function StatCard({ icon, label, value, currency = '₹', trend, accent = 'primary' }: Props) {
+export default function StatCard({ icon, label, value, currency = "₹", trend, accent = "primary" }: Props) {
   const count = useCountUp(value, 900);
 
-  const accentClass = accent === 'primary' ? 'text-primary' : accent === 'secondary' ? 'text-secondary' : '';
+  const accentClass = accent === "primary" ? "text-primary" : accent === "secondary" ? "text-secondary" : "";
 
   return (
     <motion.div className="card p-4" variants={fadeInUp} initial="hidden" animate="show">
@@ -33,8 +33,8 @@ export default function StatCard({ icon, label, value, currency = '₹', trend, 
               <MoneyText value={count} currency={currency} className="text-2xl" />
             </div>
             {trend && (
-              <div className={`text-sm font-medium ${trend.direction === 'up' ? 'text-settled' : 'text-expense'}`}>
-                {trend.direction === 'up' ? '▲' : '▼'} {Math.abs(trend.percent)}%
+              <div className={`text-sm font-medium ${trend.direction === "up" ? "text-settled" : "text-expense"}`}>
+                {trend.direction === "up" ? "▲" : "▼"} {Math.abs(trend.percent)}%
               </div>
             )}
           </div>

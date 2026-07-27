@@ -69,7 +69,11 @@ bankTxSchema.statics.recordTransaction = async function (params: {
   // update account currentBalance
   const delta = type === "Credit" ? Math.abs(amount) : -Math.abs(amount);
 
-  const account = await BankAccountModel.findByIdAndUpdate(bankAccount, { $inc: { currentBalance: delta } }, { new: true });
+  const account = await BankAccountModel.findByIdAndUpdate(
+    bankAccount,
+    { $inc: { currentBalance: delta } },
+    { new: true }
+  );
   if (!account) throw new Error("BankAccount not found");
 
   const balanceAfter = account.currentBalance;
@@ -89,7 +93,9 @@ bankTxSchema.statics.recordTransaction = async function (params: {
   return tx;
 };
 
-const BankTransactionModel = (mongoose.models.BankTransaction as BankTransactionModel) || mongoose.model<BankTransactionDocument, BankTransactionModel>("BankTransaction", bankTxSchema);
+const BankTransactionModel =
+  (mongoose.models.BankTransaction as BankTransactionModel) ||
+  mongoose.model<BankTransactionDocument, BankTransactionModel>("BankTransaction", bankTxSchema);
 
 export { BankTransactionModel };
 export default BankTransactionModel;

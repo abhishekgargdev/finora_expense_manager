@@ -1,36 +1,90 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Finora Expense Manager
 
-## Getting Started
+Finora is a premium, modern, glassmorphic personal finance dashboard and expense manager built to help you track your money, cash flow, investments, and debts at a glance.
 
-First, run the development server:
+---
+
+## 🚀 Technology Stack
+
+- **Framework**: [Next.js](https://nextjs.org/) (App Router & Server Actions/API)
+- **Database**: [MongoDB](https://www.mongodb.com/) via [Mongoose](https://mongoosejs.com/)
+- **UI Components**: [@base-ui/react](https://base-ui.com/) & custom tailwind-styled components
+- **Styling**: TailwindCSS, CSS Variables, & Glassmorphism
+- **Animations**: [Framer Motion](https://www.framer.com/motion/)
+- **Icons**: [Lucide React](https://lucide.dev/)
+- **Formatting**: [Prettier](https://prettier.io/)
+
+---
+
+## ✨ Features
+
+1. **Intelligent Home Route**: Detects authentication states. Unauthenticated users land on the login screen, while authenticated users land on the Dashboard.
+2. **Interactive Financial Dashboard**:
+   - Monthly and yearly breakdown of Income vs Expenses.
+   - Dynamic pie-chart of expenses by category.
+   - Quick action shortcuts to add Expense, Income, Investment, or Lending records instantly.
+   - Summary cards showing total bank balance, net savings, credit card outstandings, and pending debts.
+3. **Advanced Category Management**:
+   - Manage your categories properly in the dedicated `/categories` section.
+   - Dynamically create new categories by choosing "Other" in the Expense or Income dialog.
+   - Renaming categories dynamically cascades changes to all existing transactions in the database.
+   - Deleting custom categories safely resets matching transactions to "Other".
+4. **Lending Ledger**:
+   - Track money given to or borrowed from others.
+   - Detail logs recording multiple repayments (dates and amounts) directly on entries.
+   - Displays clear remaining balances and statuses (Pending, Partially Returned, Settled).
+5. **Robust Routing & Errors**:
+   - Custom premium `404 Not Found` page.
+   - Global error boundary rendering fallback view with reset hooks.
+6. **Data Portability**: Full support for importing and exporting transactions (income, expense, lending, bank transactions) using Excel/Sheets formats.
+
+---
+
+## 🛠️ Getting Started
+
+### 1. Prerequisites
+
+Create a `.env.local` file in the root of the project with the following configuration:
+
+```env
+MONGODB_URI=your_mongodb_connection_string
+JWT_SECRET=your_secret_key_for_auth_tokens
+```
+
+### 2. Install Dependencies
+
+```bash
+npm install
+```
+
+### 3. Database Seeding
+
+Seed the database with initial default categories, mock bank accounts, and transactions:
+
+```bash
+npm run seed
+```
+
+### 4. Run Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) with your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 5. Code Formatting
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Format the codebase using Prettier:
 
-## Learn More
+```bash
+npm run format
+```
 
-To learn more about Next.js, take a look at the following resources:
+### 6. Production Build
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Verify everything builds correctly:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run build
+```

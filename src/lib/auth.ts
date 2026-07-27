@@ -1,11 +1,11 @@
-import { SignJWT, jwtVerify, JWTVerifyResult } from 'jose';
-import { cookies } from 'next/headers';
+import { SignJWT, jwtVerify, JWTVerifyResult } from "jose";
+import { cookies } from "next/headers";
 
-const COOKIE_NAME = 'session';
+const COOKIE_NAME = "session";
 const JWT_SECRET = process.env.JWT_SECRET;
 
 if (!JWT_SECRET) {
-  throw new Error('Missing JWT_SECRET in environment');
+  throw new Error("Missing JWT_SECRET in environment");
 }
 
 const encoder = new TextEncoder();
@@ -13,9 +13,9 @@ const secret = encoder.encode(JWT_SECRET);
 
 export async function signSession(payload: { userId: string; email: string }) {
   const token = await new SignJWT(payload)
-    .setProtectedHeader({ alg: 'HS256' })
+    .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime('7d')
+    .setExpirationTime("7d")
     .sign(secret);
   return token;
 }
@@ -40,7 +40,7 @@ export async function getSession() {
 export async function requireAuth() {
   const session = await getSession();
   if (!session) {
-    throw new Response('Unauthorized', { status: 401 });
+    throw new Response("Unauthorized", { status: 401 });
   }
   return session;
 }
