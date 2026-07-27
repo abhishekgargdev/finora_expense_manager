@@ -15,8 +15,10 @@ export type ExpenseCategory =
 export interface IExpense {
   user: Types.ObjectId;
   amount: number;
+  source?: string;
   category: ExpenseCategory;
   description?: string;
+  note?: string;
   date: Date;
   paymentMode: "Cash" | "UPI" | "Debit Card" | "Credit Card" | "Bank Transfer";
   creditCard?: Types.ObjectId | null;
@@ -31,8 +33,10 @@ const expenseSchema = new Schema<ExpenseDocument>(
   {
     user: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
     amount: { type: Number, required: true },
+    source: { type: String },
     category: { type: String, required: true },
     description: { type: String },
+    note: { type: String },
     date: { type: Date, required: true, index: true },
     paymentMode: { type: String, enum: ["Cash", "UPI", "Debit Card", "Credit Card", "Bank Transfer"], required: true },
     creditCard: { type: Schema.Types.ObjectId, ref: "CreditCard" },
