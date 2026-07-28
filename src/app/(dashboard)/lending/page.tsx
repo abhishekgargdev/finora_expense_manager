@@ -311,7 +311,7 @@ export default function LendingPage() {
                           setEditing(null);
                           setEntryForm({
                             person,
-                            type: tab === "History" ? "Given" : tab,
+                            type: tab === "Taken" ? "Taken" : "Given",
                             amount: "",
                             date: today(),
                             dueDate: "",

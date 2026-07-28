@@ -15,14 +15,54 @@ export default function InstallAppBanner() {
   const [visible, setVisible] = useState(false);
   const [installed, setInstalled] = useState(false);
 
+  const shouldShowPrompt = () => {
+    if (typeof window === "undefined") return false;
+
+    // 1. Check if already running in standalone display mode or recorded as installed
+    const isStandalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as any).standalone === true;
+    if (isStandalone || localStorage.getItem("pwa-installed") === "true") {
+      return false;
+    }
+
+    // 2. Check if dismissed today
+    const dismissedAt = localStorage.getItem("pwa-dismissed-at");
+    if (dismissedAt) {
+      const dismissedDate = new Date(dismissedAt);
+      const todayDate = new Date();
+      if (
+        dismissedDate.getFullYear() === todayDate.getFullYear() &&
+        dismissedDate.getMonth() === todayDate.getMonth() &&
+        dismissedDate.getDate() === todayDate.getDate()
+      ) {
+        return false;
+      }
+    }
+    return true;
+  };
+
   useEffect(() => {
+    // Check initially on mount
+    if (typeof window !== "undefined") {
+      const isStandalone =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        (window.navigator as any).standalone === true;
+      if (isStandalone || localStorage.getItem("pwa-installed") === "true") {
+        setInstalled(true);
+      }
+    }
+
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      setVisible(true);
+      if (shouldShowPrompt()) {
+        setVisible(true);
+      }
     };
 
     const onAppInstalled = () => {
+      localStorage.setItem("pwa-installed", "true");
       setInstalled(true);
       setVisible(false);
     };
@@ -38,16 +78,27 @@ export default function InstallAppBanner() {
 
   const canInstall = useMemo(() => Boolean(deferredPrompt) && !installed, [deferredPrompt, installed]);
 
+  const handleDismiss = () => {
+    setVisible(false);
+    localStorage.setItem("pwa-dismissed-at", new Date().toISOString());
+  };
+
   const handleInstall = async () => {
     if (!deferredPrompt) return;
     await deferredPrompt.prompt();
-    await deferredPrompt.userChoice;
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === "accepted") {
+      localStorage.setItem("pwa-installed", "true");
+      setInstalled(true);
+    } else {
+      localStorage.setItem("pwa-dismissed-at", new Date().toISOString());
+    }
     setVisible(false);
   };
 
   return (
     <AnimatePresence>
-      {visible && canInstall ? (
+      {visible && canInstall && shouldShowPrompt() ? (
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -69,7 +120,7 @@ export default function InstallAppBanner() {
                   Install
                 </button>
                 <button
-                  onClick={() => setVisible(false)}
+                  onClick={handleDismiss}
                   className="rounded-full border border-border px-3 py-2 text-sm font-medium"
                 >
                   Dismiss
@@ -78,7 +129,7 @@ export default function InstallAppBanner() {
             </div>
             <button
               aria-label="Dismiss install banner"
-              onClick={() => setVisible(false)}
+              onClick={handleDismiss}
               className="rounded-full p-1 text-muted-foreground hover:bg-muted"
             >
               <X size={16} />
