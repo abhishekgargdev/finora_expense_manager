@@ -189,80 +189,82 @@ export default function InvestmentsPage() {
       ) : (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
           <div className="card overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Invested</TableHead>
-                  <TableHead className="text-right">Current value</TableHead>
-                  <TableHead className="text-right">Gain / Loss</TableHead>
-                  <TableHead className="w-20" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {investments.map((item) => {
-                  const difference = item.currentValue - item.amountInvested;
-                  return (
-                    <TableRow key={item.id}>
-                      <TableCell>{item.type}</TableCell>
-                      <TableCell>
-                        <div className="font-medium">{item.name || "Untitled"}</div>
-                        {item.note && (
-                          <div className="max-w-40 truncate text-xs text-muted-foreground">{item.note}</div>
-                        )}
-                      </TableCell>
-                      <TableCell>{format(new Date(item.date), "dd MMM yyyy")}</TableCell>
-                      <TableCell className="text-right">
-                        <MoneyText value={item.amountInvested} />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <MoneyText value={item.currentValue} />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <MoneyText value={difference} variant={difference >= 0 ? "positive" : "negative"} />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Tooltip>
-                            <TooltipTrigger
-                              render={
-                                <Button
-                                  variant="ghost"
-                                  size="icon-sm"
-                                  onClick={() => openEdit(item)}
-                                  aria-label="Edit investment"
-                                />
-                              }
-                            >
-                              <Pencil />
-                            </TooltipTrigger>
-                            <TooltipContent>Edit investment</TooltipContent>
-                          </Tooltip>
-                          <Tooltip>
-                            <TooltipTrigger
-                              render={
-                                <Button
-                                  variant="ghost"
-                                  size="icon-sm"
-                                  className="text-destructive hover:text-destructive"
-                                  onClick={() => void deleteItem(item)}
-                                  aria-label="Delete investment"
-                                />
-                              }
-                            >
-                              <Trash2 />
-                            </TooltipTrigger>
-                            <TooltipContent>Delete investment</TooltipContent>
-                          </Tooltip>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead className="text-right">Invested</TableHead>
+                    <TableHead className="text-right">Current value</TableHead>
+                    <TableHead className="text-right">Gain / Loss</TableHead>
+                    <TableHead className="w-20" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {investments.map((item) => {
+                    const difference = item.currentValue - item.amountInvested;
+                    return (
+                      <TableRow key={item.id}>
+                        <TableCell>{item.type}</TableCell>
+                        <TableCell>
+                          <div className="font-medium">{item.name || "Untitled"}</div>
+                          {item.note && (
+                            <div className="max-w-40 truncate text-xs text-muted-foreground">{item.note}</div>
+                          )}
+                        </TableCell>
+                        <TableCell>{format(new Date(item.date), "dd MMM yyyy")}</TableCell>
+                        <TableCell className="text-right">
+                          <MoneyText value={item.amountInvested} />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <MoneyText value={item.currentValue} />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <MoneyText value={difference} variant={difference >= 0 ? "positive" : "negative"} />
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Tooltip>
+                              <TooltipTrigger
+                                render={
+                                  <Button
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    onClick={() => openEdit(item)}
+                                    aria-label="Edit investment"
+                                  />
+                                }
+                              >
+                                <Pencil />
+                              </TooltipTrigger>
+                              <TooltipContent>Edit investment</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger
+                                render={
+                                  <Button
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    className="text-destructive hover:text-destructive"
+                                    onClick={() => void deleteItem(item)}
+                                    aria-label="Delete investment"
+                                  />
+                                }
+                              >
+                                <Trash2 />
+                              </TooltipTrigger>
+                              <TooltipContent>Delete investment</TooltipContent>
+                            </Tooltip>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           </div>
           <section className="card p-4">
             <h3 className="font-heading text-sm font-semibold">Distribution by type</h3>

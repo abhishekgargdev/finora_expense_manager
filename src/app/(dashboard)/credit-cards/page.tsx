@@ -203,44 +203,46 @@ export default function CreditCardsPage() {
           </TabsList>
           <TabsContent value="transactions" className="mt-4">
             <div className="card overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {detailLoading ? (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
-                        Loading transactions…
-                      </TableCell>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
                     </TableRow>
-                  ) : transactions.length ? (
-                    transactions.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell className="font-medium">{item.description || "Card purchase"}</TableCell>
-                        <TableCell>{format(new Date(item.date), "dd MMM yyyy")}</TableCell>
-                        <TableCell>
-                          <StatusBadge status={item.billed ? "Billed" : "Current cycle"} />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <MoneyText value={item.amount} />
+                  </TableHeader>
+                  <TableBody>
+                    {detailLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
+                          Loading transactions…
                         </TableCell>
                       </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
-                        No transactions for this card yet.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                    ) : transactions.length ? (
+                      transactions.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">{item.description || "Card purchase"}</TableCell>
+                          <TableCell>{format(new Date(item.date), "dd MMM yyyy")}</TableCell>
+                          <TableCell>
+                            <StatusBadge status={item.billed ? "Billed" : "Current cycle"} />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <MoneyText value={item.amount} />
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
+                          No transactions for this card yet.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           </TabsContent>
           <TabsContent value="bills" className="mt-4">
@@ -251,57 +253,59 @@ export default function CreditCardsPage() {
               </Button>
             </div>
             <div className="card overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Billing month</TableHead>
-                    <TableHead>Due date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {bills.map((bill) => {
-                    const overdue = !bill.isPaid && new Date(bill.dueDate) < new Date();
-                    return (
-                      <TableRow key={bill.id} className={overdue ? "bg-expense-10" : ""}>
-                        <TableCell className="font-medium">{bill.billingMonth}</TableCell>
-                        <TableCell className={overdue ? "font-medium text-expense" : ""}>
-                          {format(new Date(bill.dueDate), "dd MMM yyyy")}
-                          {overdue ? " · Overdue" : ""}
-                        </TableCell>
-                        <TableCell>
-                          <StatusBadge status={bill.isPaid ? "Paid" : "Unpaid"} />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <MoneyText value={bill.totalAmount} />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {!bill.isPaid && (
-                            <Button
-                              size="sm"
-                              onClick={() => {
-                                setPayBill(bill);
-                                setBankAccount("");
-                              }}
-                            >
-                              Mark as Paid
-                            </Button>
-                          )}
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Billing month</TableHead>
+                      <TableHead>Due date</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {bills.map((bill) => {
+                      const overdue = !bill.isPaid && new Date(bill.dueDate) < new Date();
+                      return (
+                        <TableRow key={bill.id} className={overdue ? "bg-expense-10" : ""}>
+                          <TableCell className="font-medium">{bill.billingMonth}</TableCell>
+                          <TableCell className={overdue ? "font-medium text-expense" : ""}>
+                            {format(new Date(bill.dueDate), "dd MMM yyyy")}
+                            {overdue ? " · Overdue" : ""}
+                          </TableCell>
+                          <TableCell>
+                            <StatusBadge status={bill.isPaid ? "Paid" : "Unpaid"} />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <MoneyText value={bill.totalAmount} />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {!bill.isPaid && (
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  setPayBill(bill);
+                                  setBankAccount("");
+                                }}
+                              >
+                                Mark as Paid
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    {!detailLoading && !bills.length && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                          No bills generated yet.
                         </TableCell>
                       </TableRow>
-                    );
-                  })}
-                  {!detailLoading && !bills.length && (
-                    <TableRow>
-                      <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
-                        No bills generated yet.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           </TabsContent>
         </Tabs>

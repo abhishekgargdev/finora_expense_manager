@@ -120,11 +120,11 @@ export default function DashboardPage() {
           <StatCard key={label} icon={icon} label={label} value={value} />
         ))}
       </div>
-      <div className="grid gap-5 xl:grid-cols-[1.55fr_1fr]">
+      <div className="grid gap-5 lg:grid-cols-[1.55fr_1fr]">
         <section className="card p-5">
           <h3 className="font-heading font-semibold">Income vs Expense</h3>
           <p className="text-sm text-muted-foreground">Last 12 months</p>
-          <ChartContainer config={config} className="mt-4 h-72 w-full">
+          <ChartContainer config={config} className="mt-4 h-72 w-full aspect-auto">
             <LineChart data={data.trend}>
               <XAxis dataKey="month" tickFormatter={(value) => value.slice(5)} />
               <YAxis />
@@ -136,7 +136,7 @@ export default function DashboardPage() {
         </section>
         <section className="card p-5">
           <h3 className="font-heading font-semibold">Expense by category</h3>
-          <ChartContainer config={config} className="mt-4 h-72 w-full">
+          <ChartContainer config={config} className="mt-4 h-72 w-full aspect-auto">
             <PieChart>
               <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
               <Pie data={data.expenseCategories} dataKey="value" nameKey="name" innerRadius="55%" outerRadius="82%">
@@ -148,10 +148,10 @@ export default function DashboardPage() {
           </ChartContainer>
         </section>
       </div>
-      <div className="grid gap-5 xl:grid-cols-3">
-        <section className="card p-5 xl:col-span-2">
+      <div className="grid gap-5 lg:grid-cols-3">
+        <section className="card p-5 lg:col-span-2">
           <h3 className="font-heading font-semibold">Investment distribution</h3>
-          <ChartContainer config={config} className="mt-4 h-64 w-full">
+          <ChartContainer config={config} className="mt-4 h-64 w-full aspect-auto">
             <BarChart data={distribution}>
               <XAxis dataKey="name" />
               <YAxis />
@@ -179,7 +179,7 @@ export default function DashboardPage() {
           </div>
         </section>
       </div>
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
         <People title="People who owe me" items={data.lending.owedToMe} />
         <People title="People I owe" items={data.lending.iOwe} />
         <section className="card p-5">
