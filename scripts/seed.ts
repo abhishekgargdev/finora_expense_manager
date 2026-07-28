@@ -15,6 +15,7 @@ import dotenv from "dotenv";
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import UserModel from "../src/models/User";
+import CategoryModel from "../src/models/Category";
 
 // Load .env.local first, then fall back to .env if needed.
 const envPath = path.resolve(process.cwd(), ".env.local");
@@ -43,25 +44,70 @@ async function main() {
   console.log("Connected to MongoDB");
 
   const email = EMAIL.toLowerCase();
-  const existing = await UserModel.findOne({ email }).exec();
-  if (existing) {
-    if (!SHOULD_UPDATE_IF_EXISTS) {
-      console.log(`User with email ${email} already exists. Exiting.`);
-      await mongoose.disconnect();
-      process.exit(0);
+  let user = await UserModel.findOne({ email }).exec();
+
+  if (user) {
+    console.log(`User with email ${email} already exists.`);
+    if (SHOULD_UPDATE_IF_EXISTS) {
+      const hash = await bcrypt.hash(PASSWORD, 10);
+      user.password = hash;
+      user.name = NAME;
+      await user.save();
+      console.log(`Updated existing user ${email}`);
     }
+  } else {
     const hash = await bcrypt.hash(PASSWORD, 10);
-    existing.password = hash;
-    existing.name = NAME;
-    await existing.save();
-    console.log(`Updated existing user ${email}`);
-    await mongoose.disconnect();
-    process.exit(0);
+    user = await UserModel.create({ name: NAME, email, password: hash });
+    console.log(`Created user ${email}`);
   }
 
-  const hash = await bcrypt.hash(PASSWORD, 10);
-  await UserModel.create({ name: NAME, email, password: hash });
-  console.log(`Created user ${email}`);
+  const userId = user._id;
+
+  // Seed default categories
+  console.log("Seeding common daily categories...");
+  const expenseCategories = [
+    "Food & Dining",
+    "Groceries",
+    "Travel & Transport",
+    "Rent & Housing",
+    "Bills & Utilities",
+    "Shopping",
+    "Medical & Healthcare",
+    "Entertainment & OTT",
+    "Personal Care",
+    "Education & Learning",
+    "Gifts & Donations",
+    "Other",
+  ];
+
+  const incomeCategories = [
+    "Salary",
+    "Freelance & Side Hustles",
+    "Investments & Interest",
+    "Rental Income",
+    "Refunds & Cashbacks",
+    "Gifts & Grants",
+    "Other",
+  ];
+
+  let addedCount = 0;
+  for (const cat of expenseCategories) {
+    const exists = await CategoryModel.findOne({ user: userId, name: cat, type: "Expense" }).exec();
+    if (!exists) {
+      await CategoryModel.create({ user: userId, name: cat, type: "Expense" });
+      addedCount++;
+    }
+  }
+
+  for (const cat of incomeCategories) {
+    const exists = await CategoryModel.findOne({ user: userId, name: cat, type: "Income" }).exec();
+    if (!exists) {
+      await CategoryModel.create({ user: userId, name: cat, type: "Income" });
+      addedCount++;
+    }
+  }
+
+  console.log(`Category seeding completed. Added ${addedCount} new categories.`);
 
   await mongoose.disconnect();
   process.exit(0);
