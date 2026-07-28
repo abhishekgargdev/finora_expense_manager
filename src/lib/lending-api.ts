@@ -10,6 +10,7 @@ type LendingInput = {
   dueDate?: unknown;
   note?: unknown;
   amountReturned?: unknown;
+  bankAccount?: unknown;
 };
 export type LendingRecord = {
   id: string;
@@ -21,6 +22,7 @@ export type LendingRecord = {
   date: string;
   dueDate?: string | null;
   note?: string;
+  bankAccount?: string | null;
   repayments?: { id: string; amount: number; date: string; bankAccount?: string | null }[];
 };
 
@@ -54,6 +56,7 @@ export function parseLending(input: LendingInput, partial = false) {
   if (!partial || input.date !== undefined) values.date = dateValue(input.date, "date");
   if (input.dueDate !== undefined || !partial) values.dueDate = dateValue(input.dueDate, "due date", false);
   if (input.note !== undefined || !partial) values.note = text(input.note) || undefined;
+  if (input.bankAccount !== undefined || !partial) values.bankAccount = text(input.bankAccount) || undefined;
   if (input.amountReturned !== undefined) {
     const amountReturned = Number(input.amountReturned);
     if (!Number.isFinite(amountReturned) || amountReturned < 0) throw new Error("Returned amount must be valid.");
@@ -73,6 +76,7 @@ export function serializeLending(item: any): LendingRecord {
     date: item.date.toISOString(),
     dueDate: item.dueDate?.toISOString() ?? null,
     note: item.note,
+    bankAccount: item.bankAccount?.toString() ?? null,
     repayments:
       item.repayments?.map((r: any) => ({
         id: r._id?.toString() || "",

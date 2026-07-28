@@ -20,6 +20,7 @@ export interface ILending {
   date: Date;
   dueDate?: Date | null;
   note?: string;
+  bankAccount?: Types.ObjectId | string | null;
   repayments?: IRepayment[];
   createdAt?: Date;
   updatedAt?: Date;
@@ -38,6 +39,7 @@ const lendingSchema = new Schema<LendingDocument>(
     date: { type: Date, required: true, index: true },
     dueDate: { type: Date },
     note: { type: String },
+    bankAccount: { type: Schema.Types.ObjectId, ref: "BankAccount" },
     repayments: [
       {
         amount: { type: Number, required: true },

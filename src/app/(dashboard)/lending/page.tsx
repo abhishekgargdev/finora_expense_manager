@@ -36,7 +36,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { type LendingEntry, type LendingInput, useLending } from "@/hooks/useLending";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { type LendingEntry, type LendingInput, type BankAccountOption, useLending } from "@/hooks/useLending";
 import { useSearchParams } from "next/navigation";
 
 type EntryForm = {
@@ -46,6 +47,7 @@ type EntryForm = {
   date: string;
   dueDate: string;
   note: string;
+  bankAccount: string;
 };
 type RepaymentForm = { amount: string; date: string; bankAccount: string };
 const today = () => format(new Date(), "yyyy-MM-dd");
@@ -56,6 +58,7 @@ const emptyEntry = (type: "Given" | "Taken" = "Given"): EntryForm => ({
   date: today(),
   dueDate: "",
   note: "",
+  bankAccount: "",
 });
 const toEntryForm = (entry: LendingEntry): EntryForm => ({
   person: entry.person,
@@ -64,12 +67,13 @@ const toEntryForm = (entry: LendingEntry): EntryForm => ({
   date: format(new Date(entry.date), "yyyy-MM-dd"),
   dueDate: entry.dueDate ? format(new Date(entry.dueDate), "yyyy-MM-dd") : "",
   note: entry.note ?? "",
+  bankAccount: entry.bankAccount ?? "",
 });
 const emptyRepayment = (): RepaymentForm => ({ amount: "", date: today(), bankAccount: "" });
 
 export default function LendingPage() {
   const { lending, bankAccounts, isLoading, isMutating, create, update, remove, repay } = useLending();
-  const [tab, setTab] = React.useState<"Given" | "Taken">("Given");
+  const [tab, setTab] = React.useState<"Given" | "Taken" | "History">("Given");
   const [entryOpen, setEntryOpen] = React.useState(false);
   const [repaymentOpen, setRepaymentOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<LendingEntry | null>(null);
@@ -85,9 +89,14 @@ export default function LendingPage() {
       openCreate();
     }
   }, [searchParams]);
-  const entries = lending.filter((entry) => entry.type === tab);
-  const total = entries.reduce((sum, entry) => sum + entry.amount, 0);
-  const pending = entries.reduce((sum, entry) => sum + entry.amount - entry.amountReturned, 0);
+
+  const entries = React.useMemo(() => {
+    return lending.filter((entry) => entry.type === (tab === "History" ? "Given" : tab));
+  }, [lending, tab]);
+
+  const total = React.useMemo(() => entries.reduce((sum, entry) => sum + entry.amount, 0), [entries]);
+  const pending = React.useMemo(() => entries.reduce((sum, entry) => sum + entry.amount - entry.amountReturned, 0), [entries]);
+
   const groups = React.useMemo(
     () =>
       Object.values(
@@ -98,13 +107,30 @@ export default function LendingPage() {
       ).sort((a, b) => a[0].person.localeCompare(b[0].person)),
     [entries]
   );
+
+  const repaymentHistory = React.useMemo(() => {
+    return lending
+      .flatMap((entry) =>
+        (entry.repayments || []).map((rep) => ({
+          id: rep.id,
+          person: entry.person,
+          type: entry.type,
+          amount: rep.amount,
+          date: rep.date,
+          bankAccount: rep.bankAccount,
+          entryNote: entry.note,
+        }))
+      )
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [lending]);
+
   const setEntry = <K extends keyof EntryForm>(key: K, value: EntryForm[K]) =>
     setEntryForm((current) => ({ ...current, [key]: value }));
   const setRepayment = <K extends keyof RepaymentForm>(key: K, value: RepaymentForm[K]) =>
     setRepaymentForm((current) => ({ ...current, [key]: value }));
   function openCreate() {
     setEditing(null);
-    setEntryForm(emptyEntry(tab));
+    setEntryForm(emptyEntry(tab === "History" ? "Given" : tab));
     setEntryOpen(true);
   }
   function openEdit(entry: LendingEntry) {
@@ -137,6 +163,7 @@ export default function LendingPage() {
       date: new Date(`${entryForm.date}T12:00:00`).toISOString(),
       dueDate: entryForm.dueDate ? new Date(`${entryForm.dueDate}T12:00:00`).toISOString() : null,
       note: entryForm.note.trim() || undefined,
+      bankAccount: entryForm.bankAccount || undefined,
     };
     try {
       if (editing) {
@@ -192,7 +219,7 @@ export default function LendingPage() {
           Add Entry
         </Button>
       </div>
-      <Tabs value={tab} onValueChange={(value) => setTab(value as "Given" | "Taken")}>
+      <Tabs value={tab} onValueChange={(value) => setTab(value as "Given" | "Taken" | "History")}>
         <TabsList>
           <TabsTrigger value="Given">
             <ArrowUpFromLine />
@@ -202,17 +229,25 @@ export default function LendingPage() {
             <ArrowDownToLine />
             Money I Owe
           </TabsTrigger>
+          <TabsTrigger value="History">
+            <RotateCcw />
+            Repayments History
+          </TabsTrigger>
         </TabsList>
       </Tabs>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <StatCard icon={<HandCoins />} label={tab === "Given" ? "Total Given" : "Total Taken"} value={total} />
-        <StatCard
-          icon={<RotateCcw />}
-          label={tab === "Given" ? "Pending to Receive" : "Pending to Pay"}
-          value={pending}
-        />
-      </div>
-      {entries.length === 0 ? (
+      {tab !== "History" && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <StatCard icon={<HandCoins />} label={tab === "Given" ? "Total Given" : "Total Taken"} value={total} />
+          <StatCard
+            icon={<RotateCcw />}
+            label={tab === "Given" ? "Pending to Receive" : "Pending to Pay"}
+            value={pending}
+          />
+        </div>
+      )}
+      {tab === "History" ? (
+        <RepaymentHistoryList repayments={repaymentHistory} bankAccounts={bankAccounts} />
+      ) : entries.length === 0 ? (
         <EmptyState
           icon={<HandCoins />}
           title={`No ${tab === "Given" ? "lending" : "borrowed-money"} records yet`}
@@ -251,21 +286,45 @@ export default function LendingPage() {
                   </div>
                   <div className="hidden text-right sm:block">
                     <div className="text-xs text-muted-foreground">Total</div>
-                    <MoneyText value={amount} className="font-semibold" />
+                    <MoneyText value={amount} className="font-medium text-sm" />
                   </div>
                   <div className="hidden text-right md:block">
                     <div className="text-xs text-muted-foreground">Returned</div>
-                    <MoneyText value={returned} />
+                    <MoneyText value={returned} className="text-sm" />
                   </div>
-                  <div className="hidden text-right lg:block">
-                    <div className="text-xs text-muted-foreground">Pending</div>
-                    <MoneyText value={remaining} />
+                  <div className="text-right">
+                    <div className="text-xs text-muted-foreground">
+                      {tab === "Given" ? "Left to Take" : "Left to Pay"}
+                    </div>
+                    <MoneyText value={remaining} className="font-semibold text-sm sm:text-base" />
                   </div>
                   <StatusBadge status={status} />
                   <ChevronDown className={`shrink-0 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
                 </button>
                 {isExpanded && (
-                  <div className="border-t border-border px-4 py-2">
+                  <div className="border-t border-border px-4 py-2 space-y-3">
+                    <div className="flex justify-end pt-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setEditing(null);
+                          setEntryForm({
+                            person,
+                            type: tab === "History" ? "Given" : tab,
+                            amount: "",
+                            date: today(),
+                            dueDate: "",
+                            note: "",
+                            bankAccount: "",
+                          });
+                          setEntryOpen(true);
+                        }}
+                      >
+                        <Plus className="mr-1.5 size-4" />
+                        {tab === "Given" ? "Lend More" : "Borrow More"}
+                      </Button>
+                    </div>
                     {personEntries.map((entry) => (
                       <div
                         key={entry.id}
@@ -328,9 +387,11 @@ export default function LendingPage() {
                               }
                             >
                               <RotateCcw />
-                              Repay
+                              {entry.type === "Given" ? "Record Return" : "Pay Back"}
                             </TooltipTrigger>
-                            <TooltipContent>Record repayment</TooltipContent>
+                            <TooltipContent>
+                              {entry.type === "Given" ? "Record money returned to you" : "Record repayment to lender"}
+                            </TooltipContent>
                           </Tooltip>
                           <Tooltip>
                             <TooltipTrigger
@@ -429,6 +490,36 @@ export default function LendingPage() {
               optional
             />
             <div className="grid gap-2">
+              <Label>
+                {entryForm.type === "Given" ? "Pay from Bank Account" : "Deposit to Bank Account"}{" "}
+                <span className="font-normal text-muted-foreground">(optional)</span>
+              </Label>
+              <Select
+                value={entryForm.bankAccount || "none"}
+                onValueChange={(value) => setEntry("bankAccount", value === "none" ? "" : (value ?? ""))}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="No bank account">
+                    {entryForm.bankAccount
+                      ? bankAccounts.find((account) => account.id === entryForm.bankAccount)?.name +
+                        (bankAccounts.find((account) => account.id === entryForm.bankAccount)?.last4Digits
+                          ? ` · ${bankAccounts.find((account) => account.id === entryForm.bankAccount)?.last4Digits}`
+                          : "")
+                      : undefined}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No bank account</SelectItem>
+                  {bankAccounts.map((account) => (
+                    <SelectItem key={account.id} value={account.id}>
+                      {account.name}
+                      {account.last4Digits ? ` · ${account.last4Digits}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
               <Label htmlFor="lending-note">
                 Note <span className="font-normal text-muted-foreground">(optional)</span>
               </Label>
@@ -450,9 +541,15 @@ export default function LendingPage() {
       <Dialog open={repaymentOpen} onOpenChange={setRepaymentOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Record repayment</DialogTitle>
+            <DialogTitle>
+              {repaying?.type === "Given" ? "Record Return of Money" : "Record Repayment"}
+            </DialogTitle>
             <DialogDescription>
-              {repaying ? `${repaying.person} has ${repaying.amount - repaying.amountReturned} remaining.` : ""}
+              {repaying
+                ? repaying.type === "Given"
+                  ? `${repaying.person} has ${repaying.amount - repaying.amountReturned} remaining to pay you.`
+                  : `You have ${repaying.amount - repaying.amountReturned} remaining to pay ${repaying.person}.`
+                : ""}
             </DialogDescription>
           </DialogHeader>
           <form className="grid gap-4" onSubmit={submitRepayment}>
@@ -473,7 +570,8 @@ export default function LendingPage() {
             </div>
             <div className="grid gap-2">
               <Label>
-                Bank account <span className="font-normal text-muted-foreground">(optional)</span>
+                {repaying?.type === "Given" ? "Deposit to Bank Account" : "Pay from Bank Account"}{" "}
+                <span className="font-normal text-muted-foreground">(optional)</span>
               </Label>
               <Select
                 value={repaymentForm.bankAccount || "none"}
@@ -504,7 +602,9 @@ export default function LendingPage() {
               <Button type="button" variant="outline" onClick={() => setRepaymentOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit">Record repayment</Button>
+              <Button type="submit">
+                {repaying?.type === "Given" ? "Record Return" : "Record Repayment"}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -553,6 +653,76 @@ function DateInput({
           Clear due date
         </button>
       )}
+    </div>
+  );
+}
+
+function RepaymentHistoryList({
+  repayments,
+  bankAccounts,
+}: {
+  repayments: any[];
+  bankAccounts: BankAccountOption[];
+}) {
+  return (
+    <div className="card overflow-hidden">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Date</TableHead>
+            <TableHead>Person</TableHead>
+            <TableHead>Type</TableHead>
+            <TableHead>Bank Account</TableHead>
+            <TableHead className="text-right">Amount</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {repayments.map((item) => {
+            const account = item.bankAccount
+              ? bankAccounts.find((a) => a.id === item.bankAccount)
+              : null;
+            return (
+              <TableRow key={item.id}>
+                <TableCell>{format(new Date(item.date), "dd MMM yyyy")}</TableCell>
+                <TableCell className="font-medium">{item.person}</TableCell>
+                <TableCell>
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      item.type === "Given"
+                        ? "bg-income-10 text-income"
+                        : "bg-expense-10 text-expense"
+                    }`}
+                  >
+                    {item.type === "Given" ? "Returned to you" : "Returned to them"}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  {account ? (
+                    <span className="rounded-full bg-muted px-2 py-1 text-xs">
+                      {account.name} {account.last4Digits ? `(•••• ${account.last4Digits})` : ""}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground text-xs">—</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-right">
+                  <MoneyText
+                    value={item.amount}
+                    variant={item.type === "Given" ? "positive" : "negative"}
+                  />
+                </TableCell>
+              </TableRow>
+            );
+          })}
+          {!repayments.length && (
+            <TableRow>
+              <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                No repayments recorded yet.
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
     </div>
   );
 }

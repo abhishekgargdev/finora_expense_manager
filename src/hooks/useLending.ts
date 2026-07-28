@@ -12,10 +12,11 @@ export type LendingEntry = {
   date: string;
   dueDate?: string | null;
   note?: string;
+  bankAccount?: string | null;
   repayments?: { id: string; amount: number; date: string; bankAccount?: string | null }[];
 };
 export type BankAccountOption = { id: string; name: string; last4Digits?: string };
-export type LendingInput = Pick<LendingEntry, "person" | "type" | "amount" | "date" | "dueDate" | "note">;
+export type LendingInput = Pick<LendingEntry, "person" | "type" | "amount" | "date" | "dueDate" | "note" | "bankAccount">;
 async function readJson(response: Response) {
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.error ?? "Something went wrong.");
