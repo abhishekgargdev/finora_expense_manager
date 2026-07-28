@@ -429,7 +429,7 @@ function AccountDialog({
                 }
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue />
+                  <SelectValue>{form.accountType}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Savings">Savings</SelectItem>
@@ -647,7 +647,14 @@ function TransferDialog({
             <Label>From Account</Label>
             <Select value={fromAccountId} onValueChange={(val) => setFromAccountId(val ?? "")}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select source account" />
+                <SelectValue placeholder="Select source account">
+                  {fromAccountId
+                    ? (() => {
+                        const acc = accounts.find((a) => a.id === fromAccountId);
+                        return acc ? `${acc.accountName || acc.bankName} (•••• ${acc.last4Digits || "----"})` : undefined;
+                      })()
+                    : undefined}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {accounts.map((account) => (
@@ -663,7 +670,14 @@ function TransferDialog({
             <Label>To Account</Label>
             <Select value={toAccountId} onValueChange={(val) => setToAccountId(val ?? "")} disabled={!fromAccountId}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder={fromAccountId ? "Select destination account" : "Select source account first"} />
+                <SelectValue placeholder={fromAccountId ? "Select destination account" : "Select source account first"}>
+                  {toAccountId
+                    ? (() => {
+                        const acc = accounts.find((a) => a.id === toAccountId);
+                        return acc ? `${acc.accountName || acc.bankName} (•••• ${acc.last4Digits || "----"})` : undefined;
+                      })()
+                    : undefined}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {destinationAccounts.map((account) => (

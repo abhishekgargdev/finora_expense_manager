@@ -231,7 +231,7 @@ export default function ExpensesPage() {
       <div className="flex flex-col gap-3 sm:flex-row">
         <Select value={month} onValueChange={(value) => setMonth(value ?? String(today.getMonth() + 1))}>
           <SelectTrigger className="w-full sm:w-40">
-            <SelectValue />
+            <SelectValue>{MONTHS[Number(month) - 1]}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             {MONTHS.map((name, index) => (
@@ -243,7 +243,7 @@ export default function ExpensesPage() {
         </Select>
         <Select value={year} onValueChange={(value) => setYear(value ?? String(today.getFullYear()))}>
           <SelectTrigger className="w-full sm:w-28">
-            <SelectValue />
+            <SelectValue>{year}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             {years.map((option) => (
@@ -255,7 +255,7 @@ export default function ExpensesPage() {
         </Select>
         <Select value={category} onValueChange={(value) => setCategory(value ?? "all")}>
           <SelectTrigger className="w-full sm:w-44">
-            <SelectValue />
+            <SelectValue>{category === "all" ? "All categories" : category}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All categories</SelectItem>
@@ -419,7 +419,7 @@ export default function ExpensesPage() {
                 <Label>Category</Label>
                 <Select value={form.category} onValueChange={(value) => updateForm("category", value ?? "Other")}>
                   <SelectTrigger className="w-full">
-                    <SelectValue />
+                    <SelectValue>{form.category}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {CATEGORIES.map((option) => (
@@ -466,7 +466,7 @@ export default function ExpensesPage() {
                 onValueChange={(value) => updateForm("paymentMode", (value ?? "Cash") as ExpenseInput["paymentMode"])}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue />
+                  <SelectValue>{form.paymentMode}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {PAYMENT_MODES.map((option) => (

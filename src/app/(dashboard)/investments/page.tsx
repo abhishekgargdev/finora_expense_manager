@@ -308,7 +308,7 @@ export default function InvestmentsPage() {
                 <Label>Type</Label>
                 <Select value={form.type} onValueChange={(value) => change("type", value ?? "Other")}>
                   <SelectTrigger className="w-full">
-                    <SelectValue />
+                    <SelectValue>{form.type}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {TYPES.map((type) => (

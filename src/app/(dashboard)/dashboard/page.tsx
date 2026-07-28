@@ -61,7 +61,11 @@ export default function DashboardPage() {
         <div className="flex gap-2">
           <Select value={month} onValueChange={(value) => setMonth(value ?? "all")}>
             <SelectTrigger className="w-32">
-              <SelectValue />
+              <SelectValue>
+                {month === "all"
+                  ? "All time"
+                  : new Date(2026, Number(month) - 1, 1).toLocaleString("default", { month: "short" })}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All time</SelectItem>
@@ -74,7 +78,7 @@ export default function DashboardPage() {
           </Select>
           <Select value={year} onValueChange={(value) => setYear(value ?? String(new Date().getFullYear()))}>
             <SelectTrigger className="w-24">
-              <SelectValue />
+              <SelectValue>{year}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               {[0, 1, 2].map((offset) => (

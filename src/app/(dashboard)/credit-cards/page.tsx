@@ -322,7 +322,14 @@ export default function CreditCardsPage() {
                 onValueChange={(value) => setBankAccount(value === "none" ? "" : (value ?? ""))}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="No bank account" />
+                  <SelectValue placeholder="No bank account">
+                    {bankAccount
+                      ? bankAccounts.find((account) => account.id === bankAccount)?.name +
+                        (bankAccounts.find((account) => account.id === bankAccount)?.last4Digits
+                          ? ` · ${bankAccounts.find((account) => account.id === bankAccount)?.last4Digits}`
+                          : "")
+                      : undefined}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">No bank account</SelectItem>

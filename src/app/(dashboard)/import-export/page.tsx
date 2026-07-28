@@ -144,7 +144,7 @@ export default function ImportExportPage() {
               }}
             >
               <SelectTrigger className="w-full">
-                <SelectValue />
+                <SelectValue>{labels[importModule]}</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {modules.map((module) => (
@@ -245,7 +245,7 @@ export default function ImportExportPage() {
             <Label>Module</Label>
             <Select value={exportModule} onValueChange={(value) => setExportModule(value as Module | "bank-accounts")}>
               <SelectTrigger className="w-full">
-                <SelectValue />
+                <SelectValue>{exportModule === "bank-accounts" ? "Bank Accounts" : labels[exportModule]}</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {modules.map((module) => (

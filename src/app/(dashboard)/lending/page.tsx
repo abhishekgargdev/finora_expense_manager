@@ -459,7 +459,7 @@ export default function LendingPage() {
                   onValueChange={(value) => setEntry("type", (value ?? "Given") as EntryForm["type"])}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue />
+                    <SelectValue>{entryForm.type === "Given" ? "Money I gave" : "Money I owe"}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Given">Money I gave</SelectItem>
