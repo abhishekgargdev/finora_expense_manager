@@ -20,6 +20,8 @@ import StatCard from "@/components/finance/StatCard";
 import PageSkeleton from "@/components/loader/PageSkeleton";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import QuickAddDialog from "@/components/dashboard/QuickAddDialog";
 type Summary = any;
 const colors = ["var(--income)", "var(--expense)", "var(--investment)", "var(--primary)", "var(--pending)", "#8b5cf6"];
 const config = {
@@ -31,13 +33,15 @@ export default function DashboardPage() {
   const [data, setData] = React.useState<Summary | null>(null);
   const [month, setMonth] = React.useState("all");
   const [year, setYear] = React.useState(String(new Date().getFullYear()));
+  const [quickAddOpen, setQuickAddOpen] = React.useState(false);
+  const [refreshTrigger, setRefreshTrigger] = React.useState(0);
   React.useEffect(() => {
     void (async () => {
       const params = new URLSearchParams(month === "all" ? {} : { month, year });
       const response = await fetch(`/api/dashboard/summary?${params}`);
       if (response.ok) setData(await response.json());
     })();
-  }, [month, year]);
+  }, [month, year, refreshTrigger]);
   if (!data) return <PageSkeleton variant="chart" />;
   const distribution = Object.entries(data.investments.distribution).map(([name, value]) => ({ name, value }));
   const cards = [
@@ -58,7 +62,11 @@ export default function DashboardPage() {
             Your money, spending, and financial position at a glance.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          <Button onClick={() => setQuickAddOpen(true)}>
+            <Plus className="size-4" />
+            Quick Add
+          </Button>
           <Select value={month} onValueChange={(value) => setMonth(value ?? "all")}>
             <SelectTrigger className="w-32">
               <SelectValue>
@@ -206,6 +214,11 @@ export default function DashboardPage() {
           </div>
         </section>
       </div>
+      <QuickAddDialog
+        open={quickAddOpen}
+        onOpenChange={setQuickAddOpen}
+        onSuccess={() => setRefreshTrigger((prev) => prev + 1)}
+      />
     </div>
   );
 }
