@@ -70,6 +70,14 @@ export function useBankAccounts() {
           body: JSON.stringify(input),
         })
       ),
+    update: (id: string, input: Partial<BankAccountInput> & { currentBalance?: number }) =>
+      mutate<{ account: BankAccount }>(() =>
+        fetch(`/api/bank-accounts/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(input),
+        })
+      ),
     remove: (id: string) => mutate(() => fetch(`/api/bank-accounts/${id}`, { method: "DELETE" })),
     transaction: (id: string, input: { type: "Credit" | "Debit"; amount: number; description: string; date: string }) =>
       mutate(() =>

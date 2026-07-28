@@ -79,6 +79,14 @@ export function useCreditCards() {
           body: JSON.stringify(input),
         })
       ),
+    update: (id: string, input: Partial<CardInput>) =>
+      mutate<{ card: CreditCard }>(() =>
+        fetch(`/api/credit-cards/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(input),
+        })
+      ),
     remove: (id: string) => mutate(() => fetch(`/api/credit-cards/${id}`, { method: "DELETE" })),
     generateBill: (id: string) =>
       mutate(() =>

@@ -7,6 +7,7 @@ import {
   Building2,
   ChevronLeft,
   Landmark,
+  Pencil,
   Plus,
   ReceiptText,
   Trash2,
@@ -40,21 +41,23 @@ import {
 } from "@/hooks/useBankAccounts";
 const COLORS = ["#1e3a5f", "#0f766e", "#6d28d9", "#9a3412", "#9f1239", "#334155"];
 const today = () => format(new Date(), "yyyy-MM-dd");
-const emptyAccount = (): BankAccountInput => ({
+const emptyAccount = (): BankAccountInput & { currentBalance?: number } => ({
   bankName: "",
   accountName: "",
   accountType: "Savings",
   last4Digits: "",
   openingBalance: 0,
+  currentBalance: 0,
   themeColor: COLORS[0],
 });
 export default function BankAccountsPage() {
-  const { accounts, isLoading, isMutating, create, remove, transaction } = useBankAccounts();
+  const { accounts, isLoading, isMutating, create, update, remove, transaction } = useBankAccounts();
   const [selected, setSelected] = React.useState<BankAccount | null>(null);
   const [ledger, setLedger] = React.useState<BankTransaction[]>([]);
   const [accountOpen, setAccountOpen] = React.useState(false);
   const [transactionOpen, setTransactionOpen] = React.useState(false);
-  const [accountForm, setAccountForm] = React.useState<BankAccountInput>(emptyAccount());
+  const [editingAccount, setEditingAccount] = React.useState<BankAccount | null>(null);
+  const [accountForm, setAccountForm] = React.useState<BankAccountInput & { currentBalance?: number }>(emptyAccount());
   const [transactionForm, setTransactionForm] = React.useState({
     type: "Credit" as "Credit" | "Debit",
     amount: "",
@@ -71,15 +74,49 @@ export default function BankAccountsPage() {
       toast.error(error instanceof Error ? error.message : "Unable to load transaction history.");
     }
   }
+  function startCreate() {
+    setEditingAccount(null);
+    setAccountForm(emptyAccount());
+    setAccountOpen(true);
+  }
+  function startEdit(account: BankAccount) {
+    setEditingAccount(account);
+    setAccountForm({
+      bankName: account.bankName,
+      accountName: account.accountName || "",
+      accountType: account.accountType,
+      last4Digits: account.last4Digits || "",
+      openingBalance: account.openingBalance,
+      currentBalance: account.currentBalance,
+      themeColor: account.themeColor || COLORS[0],
+    });
+    setAccountOpen(true);
+  }
   async function submitAccount(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     try {
-      await create(accountForm);
-      toast.success("Bank account added.");
+      if (editingAccount) {
+        const payload = await update(editingAccount.id, {
+          bankName: accountForm.bankName,
+          accountName: accountForm.accountName,
+          accountType: accountForm.accountType,
+          last4Digits: accountForm.last4Digits,
+          themeColor: accountForm.themeColor,
+          currentBalance: accountForm.currentBalance,
+        });
+        toast.success("Bank account updated.");
+        if (selected && selected.id === editingAccount.id) {
+          setSelected(payload.account);
+        }
+      } else {
+        await create(accountForm);
+        toast.success("Bank account added.");
+      }
       setAccountOpen(false);
       setAccountForm(emptyAccount());
+      setEditingAccount(null);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to add account.");
+      toast.error(error instanceof Error ? error.message : "Unable to save account.");
     }
   }
   async function submitTransaction(event: React.FormEvent<HTMLFormElement>) {
@@ -129,10 +166,16 @@ export default function BankAccountsPage() {
               {selected.bankName} · {selected.accountType}
             </p>
           </div>
-          <Button onClick={() => setTransactionOpen(true)}>
-            <Plus />
-            Add Transaction
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => startEdit(selected)}>
+              <Pencil className="size-4" />
+              Edit Account
+            </Button>
+            <Button onClick={() => setTransactionOpen(true)}>
+              <Plus />
+              Add Transaction
+            </Button>
+          </div>
         </div>
         <div className="card overflow-hidden">
           <Table>
@@ -192,7 +235,7 @@ export default function BankAccountsPage() {
             A single, up-to-date view of your cash across every account.
           </p>
         </div>
-        <Button onClick={() => setAccountOpen(true)}>
+        <Button onClick={startCreate}>
           <Plus />
           Add Account
         </Button>
@@ -207,15 +250,32 @@ export default function BankAccountsPage() {
               <button className="w-full text-left" onClick={() => void openAccount(account)}>
                 <AccountVisual account={account} />
               </button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="absolute bottom-3 right-3 text-white/80 hover:bg-white/15 hover:text-white"
-                onClick={() => void deleteAccount(account)}
-                aria-label="Delete account"
-              >
-                <Trash2 />
-              </Button>
+              <div className="absolute bottom-3 right-3 flex gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-white/80 hover:bg-white/15 hover:text-white"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    startEdit(account);
+                  }}
+                  aria-label="Edit account"
+                >
+                  <Pencil className="size-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-white/80 hover:bg-white/15 hover:text-white"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void deleteAccount(account);
+                  }}
+                  aria-label="Delete account"
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
             </div>
           ))}
         </div>
@@ -225,7 +285,7 @@ export default function BankAccountsPage() {
           title="No bank accounts yet"
           description="Add an account to see your balances and transaction history in one place."
           action={
-            <Button onClick={() => setAccountOpen(true)}>
+            <Button onClick={startCreate}>
               <Plus />
               Add your first bank account
             </Button>
@@ -238,6 +298,7 @@ export default function BankAccountsPage() {
         form={accountForm}
         setForm={setAccountForm}
         onSubmit={submitAccount}
+        isEdit={!!editingAccount}
       />
       <LoaderOverlay show={isMutating} label="Updating bank accounts..." />
     </div>
@@ -282,21 +343,29 @@ function AccountDialog({
   form,
   setForm,
   onSubmit,
+  isEdit = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  form: BankAccountInput;
-  setForm: React.Dispatch<React.SetStateAction<BankAccountInput>>;
+  form: BankAccountInput & { currentBalance?: number };
+  setForm: React.Dispatch<React.SetStateAction<BankAccountInput & { currentBalance?: number }>>;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+  isEdit?: boolean;
 }) {
-  const change = <K extends keyof BankAccountInput>(key: K, value: BankAccountInput[K]) =>
-    setForm((current) => ({ ...current, [key]: value }));
+  const change = <K extends keyof (BankAccountInput & { currentBalance?: number })>(
+    key: K,
+    value: (BankAccountInput & { currentBalance?: number })[K]
+  ) => setForm((current) => ({ ...current, [key]: value }));
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Add bank account</DialogTitle>
-          <DialogDescription>Set an opening balance to start a complete account ledger.</DialogDescription>
+          <DialogTitle>{isEdit ? "Edit bank account" : "Add bank account"}</DialogTitle>
+          <DialogDescription>
+            {isEdit
+              ? "Update details or correct the balance of your bank account."
+              : "Set an opening balance to start a complete account ledger."}
+          </DialogDescription>
         </DialogHeader>
         <form className="grid gap-4" onSubmit={onSubmit}>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -343,16 +412,29 @@ function AccountDialog({
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-2">
-              <Label>Opening balance</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={form.openingBalance || ""}
-                onChange={(event) => change("openingBalance", Number(event.target.value))}
-                required
-              />
-            </div>
+            {isEdit ? (
+              <div className="grid gap-2">
+                <Label>Current balance (to adjust)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={form.currentBalance ?? ""}
+                  onChange={(event) => change("currentBalance", Number(event.target.value))}
+                  required
+                />
+              </div>
+            ) : (
+              <div className="grid gap-2">
+                <Label>Opening balance</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={form.openingBalance || ""}
+                  onChange={(event) => change("openingBalance", Number(event.target.value))}
+                  required
+                />
+              </div>
+            )}
             <div className="grid gap-2">
               <Label>Theme color</Label>
               <div className="flex gap-2">
@@ -373,7 +455,7 @@ function AccountDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit">Add account</Button>
+            <Button type="submit">{isEdit ? "Save changes" : "Add account"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

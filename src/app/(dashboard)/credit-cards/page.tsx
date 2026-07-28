@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   CreditCard as CardIcon,
   Landmark,
+  Pencil,
   Plus,
   ReceiptText,
   Trash2,
@@ -58,9 +59,10 @@ async function read(response: Response | Promise<Response>) {
   return payload;
 }
 export default function CreditCardsPage() {
-  const { cards, loading, mutating, create, remove, generateBill } = useCreditCards();
+  const { cards, loading, mutating, create, update, remove, generateBill } = useCreditCards();
   const [form, setForm] = React.useState<CardInput>(empty());
   const [addOpen, setAddOpen] = React.useState(false);
+  const [editingCard, setEditingCard] = React.useState<CreditCard | null>(null);
   const [selected, setSelected] = React.useState<CreditCard | null>(null);
   const [transactions, setTransactions] = React.useState<CardTransaction[]>([]);
   const [bills, setBills] = React.useState<CardBill[]>([]);
@@ -91,15 +93,42 @@ export default function CreditCardsPage() {
       setDetailLoading(false);
     }
   }
+  function startCreate() {
+    setEditingCard(null);
+    setForm(empty());
+    setAddOpen(true);
+  }
+  function startEdit(card: CreditCard) {
+    setEditingCard(card);
+    setForm({
+      cardName: card.cardName,
+      bankName: card.bankName,
+      last4Digits: card.last4Digits,
+      billingCycleDay: card.billingCycleDay,
+      dueDay: card.dueDay,
+      creditLimit: card.creditLimit,
+      themeColor: card.themeColor || COLORS[0],
+    });
+    setAddOpen(true);
+  }
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     try {
-      await create(form);
-      toast.success("Credit card added.");
+      if (editingCard) {
+        const payload = await update(editingCard.id, form);
+        toast.success("Credit card updated.");
+        if (selected && selected.id === editingCard.id) {
+          setSelected(payload.card);
+        }
+      } else {
+        await create(form);
+        toast.success("Credit card added.");
+      }
       setAddOpen(false);
       setForm(empty());
+      setEditingCard(null);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to add card.");
+      toast.error(error instanceof Error ? error.message : "Unable to save card.");
     }
   }
   async function generate() {
@@ -149,10 +178,18 @@ export default function CreditCardsPage() {
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
           <CreditCardVisual card={selected} className="w-full max-w-md shrink-0" />
           <div className="min-w-0 flex-1">
-            <h2 className="font-heading text-2xl font-semibold">{selected.cardName}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {selected.bankName} · Billing day {selected.billingCycleDay} · Due day {selected.dueDay}
-            </p>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h2 className="font-heading text-2xl font-semibold">{selected.cardName}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {selected.bankName} · Billing day {selected.billingCycleDay} · Due day {selected.dueDay}
+                </p>
+              </div>
+              <Button variant="outline" onClick={() => startEdit(selected)}>
+                <Pencil className="size-4" />
+                Edit Card
+              </Button>
+            </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <StatCard icon={<ReceiptText />} label="Outstanding" value={selected.outstanding} />
               <StatCard icon={<WalletCards />} label="Available credit" value={selected.availableCredit} />
@@ -316,7 +353,7 @@ export default function CreditCardsPage() {
             Track card spending, credit availability, and bill payments.
           </p>
         </div>
-        <Button onClick={() => setAddOpen(true)}>
+        <Button onClick={startCreate}>
           <Plus />
           Add Card
         </Button>
@@ -341,15 +378,32 @@ export default function CreditCardsPage() {
                   </div>
                 </div>
               </button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="absolute bottom-0 right-0 text-destructive hover:text-destructive"
-                onClick={() => void deleteCard(card)}
-                aria-label="Delete card"
-              >
-                <Trash2 />
-              </Button>
+              <div className="absolute bottom-0 right-0 flex gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-white/80 hover:bg-white/15 hover:text-white"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    startEdit(card);
+                  }}
+                  aria-label="Edit card"
+                >
+                  <Pencil className="size-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-white/80 hover:bg-white/15 hover:text-white"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void deleteCard(card);
+                  }}
+                  aria-label="Delete card"
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
             </div>
           ))}
         </div>
@@ -359,14 +413,14 @@ export default function CreditCardsPage() {
           title="No credit cards yet"
           description="Add a card to follow its purchases and billing cycles."
           action={
-            <Button onClick={() => setAddOpen(true)}>
+            <Button onClick={startCreate}>
               <Plus />
               Add your first card
             </Button>
           }
         />
       )}
-      <CardDialog open={addOpen} onOpenChange={setAddOpen} form={form} setForm={setForm} onSubmit={submit} />
+      <CardDialog open={addOpen} onOpenChange={setAddOpen} form={form} setForm={setForm} onSubmit={submit} isEdit={!!editingCard} />
       <LoaderOverlay show={mutating} label="Updating credit cards..." />
     </div>
   );
@@ -406,12 +460,14 @@ function CardDialog({
   form,
   setForm,
   onSubmit,
+  isEdit = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   form: CardInput;
   setForm: React.Dispatch<React.SetStateAction<CardInput>>;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+  isEdit?: boolean;
 }) {
   const change = <K extends keyof CardInput>(key: K, value: CardInput[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
@@ -419,8 +475,10 @@ function CardDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Add credit card</DialogTitle>
-          <DialogDescription>Keep the details needed to track your card's billing cycle.</DialogDescription>
+          <DialogTitle>{isEdit ? "Edit credit card" : "Add credit card"}</DialogTitle>
+          <DialogDescription>
+            {isEdit ? "Update your credit card details." : "Keep the details needed to track your card's billing cycle."}
+          </DialogDescription>
         </DialogHeader>
         <form className="grid gap-4" onSubmit={onSubmit}>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -448,7 +506,8 @@ function CardDialog({
               <Label>Credit limit</Label>
               <Input
                 type="number"
-                min="1"
+                min="0.01"
+                step="0.01"
                 value={form.creditLimit || ""}
                 onChange={(event) => change("creditLimit", Number(event.target.value))}
                 required
@@ -498,7 +557,7 @@ function CardDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit">Add card</Button>
+            <Button type="submit">{isEdit ? "Save changes" : "Add card"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
