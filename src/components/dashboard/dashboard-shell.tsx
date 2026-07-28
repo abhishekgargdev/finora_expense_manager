@@ -42,7 +42,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import LoaderOverlay from "@/components/loader/LoaderOverlay";
 import useUser from "@/hooks/useUser";
 import { cn } from "@/lib/utils";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
 
 const navigation = [
   { title: "Dashboard", href: "/dashboard", icon: Home },
@@ -221,10 +221,12 @@ export default function DashboardShell({ children }: { children: React.ReactNode
                 </Avatar>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel className="space-y-0.5 px-2 py-2">
-                  <p className="truncate text-sm font-medium text-foreground">{user?.name ?? "Account"}</p>
-                  <p className="truncate text-xs font-normal text-muted-foreground">{user?.email ?? ""}</p>
-                </DropdownMenuLabel>
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel className="space-y-0.5 px-2 py-2">
+                    <p className="truncate text-sm font-medium text-foreground">{user?.name ?? "Account"}</p>
+                    <p className="truncate text-xs font-normal text-muted-foreground">{user?.email ?? ""}</p>
+                  </DropdownMenuLabel>
+                </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem variant="destructive" onClick={signOut}>
                   <LogOut />
