@@ -1,4 +1,4 @@
-import connect, { mongoose } from "../lib/db";
+import { mongoose } from "../lib/db";
 import { Schema, Model, Document, Types } from "mongoose";
 
 export interface ICash {
