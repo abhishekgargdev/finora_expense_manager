@@ -87,5 +87,13 @@ export function useBankAccounts() {
           body: JSON.stringify(input),
         })
       ),
+    transfer: (input: { fromAccountId: string; toAccountId: string; amount: number; description?: string; date?: string }) =>
+      mutate<void>(() =>
+        fetch("/api/bank-accounts/transfer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(input),
+        })
+      ),
   };
 }

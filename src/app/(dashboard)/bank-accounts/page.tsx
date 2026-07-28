@@ -3,6 +3,7 @@ import * as React from "react";
 import { format } from "date-fns";
 import {
   ArrowDownRight,
+  ArrowRightLeft,
   ArrowUpRight,
   Building2,
   ChevronLeft,
@@ -51,11 +52,12 @@ const emptyAccount = (): BankAccountInput & { currentBalance?: number } => ({
   themeColor: COLORS[0],
 });
 export default function BankAccountsPage() {
-  const { accounts, isLoading, isMutating, create, update, remove, transaction } = useBankAccounts();
+  const { accounts, isLoading, isMutating, create, update, remove, transaction, transfer } = useBankAccounts();
   const [selected, setSelected] = React.useState<BankAccount | null>(null);
   const [ledger, setLedger] = React.useState<BankTransaction[]>([]);
   const [accountOpen, setAccountOpen] = React.useState(false);
   const [transactionOpen, setTransactionOpen] = React.useState(false);
+  const [transferOpen, setTransferOpen] = React.useState(false);
   const [editingAccount, setEditingAccount] = React.useState<BankAccount | null>(null);
   const [accountForm, setAccountForm] = React.useState<BankAccountInput & { currentBalance?: number }>(emptyAccount());
   const [transactionForm, setTransactionForm] = React.useState({
@@ -64,6 +66,27 @@ export default function BankAccountsPage() {
     description: "",
     date: today(),
   });
+  async function submitTransfer(
+    fromAccountId: string,
+    toAccountId: string,
+    amount: number,
+    description: string,
+    date: string
+  ) {
+    try {
+      await transfer({
+        fromAccountId,
+        toAccountId,
+        amount,
+        description: description || undefined,
+        date: new Date(`${date}T12:00:00`).toISOString(),
+      });
+      toast.success("Funds transferred successfully.");
+      setTransferOpen(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to complete transfer.");
+    }
+  }
   const total = accounts.reduce((sum, account) => sum + account.currentBalance, 0);
   async function openAccount(account: BankAccount) {
     setSelected(account);
@@ -235,10 +258,18 @@ export default function BankAccountsPage() {
             A single, up-to-date view of your cash across every account.
           </p>
         </div>
-        <Button onClick={startCreate}>
-          <Plus />
-          Add Account
-        </Button>
+        <div className="flex gap-2">
+          {accounts.length > 1 && (
+            <Button variant="outline" onClick={() => setTransferOpen(true)}>
+              <ArrowRightLeft className="size-4" />
+              Transfer Funds
+            </Button>
+          )}
+          <Button onClick={startCreate}>
+            <Plus />
+            Add Account
+          </Button>
+        </div>
       </div>
       <div className="max-w-sm">
         <StatCard icon={<Landmark />} label="Total Balance" value={total} />
@@ -299,6 +330,12 @@ export default function BankAccountsPage() {
         setForm={setAccountForm}
         onSubmit={submitAccount}
         isEdit={!!editingAccount}
+      />
+      <TransferDialog
+        open={transferOpen}
+        onOpenChange={setTransferOpen}
+        accounts={accounts}
+        onSubmit={submitTransfer}
       />
       <LoaderOverlay show={isMutating} label="Updating bank accounts..." />
     </div>
@@ -539,6 +576,137 @@ function TransactionDialog({
               <ReceiptText />
               Add transaction
             </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+function TransferDialog({
+  open,
+  onOpenChange,
+  accounts,
+  onSubmit,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  accounts: BankAccount[];
+  onSubmit: (
+    fromAccountId: string,
+    toAccountId: string,
+    amount: number,
+    description: string,
+    date: string
+  ) => Promise<void>;
+}) {
+  const [fromAccountId, setFromAccountId] = React.useState("");
+  const [toAccountId, setToAccountId] = React.useState("");
+  const [amount, setAmount] = React.useState("");
+  const [description, setDescription] = React.useState("");
+  const [date, setDate] = React.useState(today());
+
+  React.useEffect(() => {
+    if (open) {
+      setFromAccountId("");
+      setToAccountId("");
+      setAmount("");
+      setDescription("");
+      setDate(today());
+    }
+  }, [open]);
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const numAmount = Number(amount);
+    if (!fromAccountId || !toAccountId) {
+      toast.error("Please select both source and destination accounts.");
+      return;
+    }
+    if (fromAccountId === toAccountId) {
+      toast.error("Source and destination accounts must be different.");
+      return;
+    }
+    if (!Number.isFinite(numAmount) || numAmount <= 0) {
+      toast.error("Please enter a valid transfer amount.");
+      return;
+    }
+    await onSubmit(fromAccountId, toAccountId, numAmount, description, date);
+  };
+
+  const destinationAccounts = accounts.filter((a) => a.id !== fromAccountId);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Transfer Funds</DialogTitle>
+          <DialogDescription>Move money between your bank accounts.</DialogDescription>
+        </DialogHeader>
+        <form className="grid gap-4" onSubmit={handleSubmit}>
+          <div className="grid gap-2">
+            <Label>From Account</Label>
+            <Select value={fromAccountId} onValueChange={(val) => setFromAccountId(val ?? "")}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select source account" />
+              </SelectTrigger>
+              <SelectContent>
+                {accounts.map((account) => (
+                  <SelectItem key={account.id} value={account.id}>
+                    {account.accountName || account.bankName} (•••• {account.last4Digits || "----"})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid gap-2">
+            <Label>To Account</Label>
+            <Select value={toAccountId} onValueChange={(val) => setToAccountId(val ?? "")} disabled={!fromAccountId}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={fromAccountId ? "Select destination account" : "Select source account first"} />
+              </SelectTrigger>
+              <SelectContent>
+                {destinationAccounts.map((account) => (
+                  <SelectItem key={account.id} value={account.id}>
+                    {account.accountName || account.bankName} (•••• {account.last4Digits || "----"})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid gap-2">
+            <Label>Amount</Label>
+            <Input
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={amount}
+              onChange={(event) => setAmount(event.target.value)}
+              placeholder="0.00"
+              required
+            />
+          </div>
+
+          <div className="grid gap-2">
+            <Label>Description (optional)</Label>
+            <Input
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder="e.g. Monthly savings transfer"
+            />
+          </div>
+
+          <div className="grid gap-2">
+            <Label>Date</Label>
+            <Input type="date" value={date} onChange={(event) => setDate(event.target.value)} required />
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit">Transfer</Button>
           </DialogFooter>
         </form>
       </DialogContent>
