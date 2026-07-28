@@ -4,6 +4,7 @@ import { ensureBankAccount, getUserId, parseIncome, serializeIncome } from "@/li
 import connect from "@/lib/db";
 import BankTransactionModel from "@/models/BankTransaction";
 import IncomeModel from "@/models/Income";
+import CashTransactionModel from "@/models/CashTransaction";
 
 async function getIncome(id: string, userId: string) {
   const income = await IncomeModel.findOne({ _id: id, user: userId });
@@ -24,6 +25,22 @@ async function updateIncome(request: NextRequest, context: RouteContext<"/api/in
         : await ensureBankAccount(userId, input.bankAccount);
     const nextAmount = typeof input.amount === "number" ? input.amount : income.amount;
     const bankChanged = nextBankAccount !== income.bankAccount?.toString() || nextAmount !== income.amount;
+    const nextPaymentMode = input.paymentMode ?? income.paymentMode;
+    const cashChanged =
+      (income.paymentMode === "Cash" && (nextPaymentMode !== "Cash" || nextAmount !== income.amount)) ||
+      (nextPaymentMode === "Cash" && income.paymentMode !== "Cash");
+
+    if (cashChanged && income.paymentMode === "Cash") {
+      await CashTransactionModel.recordTransaction({
+        user: userId,
+        type: "Debit",
+        amount: income.amount,
+        description: `Income adjustment: ${income.source}`,
+        date: new Date(),
+        source: "Income",
+        refId: income._id,
+      });
+    }
 
     if (bankChanged && income.bankAccount) {
       await BankTransactionModel.recordTransaction({
@@ -40,6 +57,18 @@ async function updateIncome(request: NextRequest, context: RouteContext<"/api/in
 
     Object.assign(income, input, { bankAccount: nextBankAccount });
     await income.save();
+
+    if (cashChanged && nextPaymentMode === "Cash") {
+      await CashTransactionModel.recordTransaction({
+        user: userId,
+        type: "Credit",
+        amount: income.amount,
+        description: `Income: ${income.source}`,
+        date: income.date,
+        source: "Income",
+        refId: income._id,
+      });
+    }
 
     if (bankChanged && nextBankAccount) {
       await BankTransactionModel.recordTransaction({
@@ -81,6 +110,17 @@ export async function DELETE(_: NextRequest, context: RouteContext<"/api/income/
       await BankTransactionModel.recordTransaction({
         user: userId,
         bankAccount: income.bankAccount,
+        type: "Debit",
+        amount: income.amount,
+        description: `Income removal: ${income.source}`,
+        date: new Date(),
+        source: "Income",
+        refId: income._id,
+      });
+    }
+    if (income.paymentMode === "Cash") {
+      await CashTransactionModel.recordTransaction({
+        user: userId,
         type: "Debit",
         amount: income.amount,
         description: `Income removal: ${income.source}`,

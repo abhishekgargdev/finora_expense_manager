@@ -8,6 +8,7 @@ import ExpenseModel from "@/models/Expense";
 import IncomeModel from "@/models/Income";
 import InvestmentModel from "@/models/Investment";
 import LendingModel from "@/models/Lending";
+import CashModel from "@/models/Cash";
 const sum = (
   items: { amount?: number; currentValue?: number; amountInvested?: number }[],
   key: "amount" | "currentValue" | "amountInvested"
@@ -44,6 +45,7 @@ export async function GET(request: NextRequest) {
       recentLending,
       monthlyIncome,
       monthlyExpenses,
+      cash,
     ] = await Promise.all([
       IncomeModel.find(period).lean(),
       ExpenseModel.find(period).lean(),
@@ -75,6 +77,7 @@ export async function GET(request: NextRequest) {
         },
         { $group: { _id: { $dateToString: { format: "%Y-%m", date: "$date" } }, amount: { $sum: "$amount" } } },
       ]),
+      CashModel.findOne({ user }).lean(),
     ]);
     const incomeTotal = sum(income, "amount"),
       expenseTotal = sum(expenses, "amount"),
@@ -154,6 +157,7 @@ export async function GET(request: NextRequest) {
         bills.reduce((total, bill) => total + bill.totalAmount, 0) +
         currentCard.reduce((total, entry) => total + entry.amount, 0),
       bankBalance: accounts.reduce((total, account) => total + account.currentBalance, 0),
+      cashBalance: cash ? cash.balance : 0,
       accounts: accounts.map((account) => ({
         id: account._id.toString(),
         name: account.accountName || account.bankName,

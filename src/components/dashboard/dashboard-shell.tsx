@@ -19,6 +19,7 @@ import {
   TrendingDown,
   TrendingUp,
   Upload,
+  Banknote,
 } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -53,6 +54,7 @@ const navigation = [
   { title: "Lending", href: "/lending", icon: Handshake },
   { title: "Credit Cards", href: "/credit-cards", icon: CreditCard },
   { title: "Bank Accounts", href: "/bank-accounts", icon: Landmark },
+  { title: "Cash Wallet", href: "/cash-wallet", icon: Banknote },
   { title: "Import / Export", href: "/import-export", icon: Upload },
 ];
 
@@ -65,6 +67,7 @@ const routeTitles: Record<string, string> = {
   "/lending": "Lending",
   "/credit-cards": "Credit Cards",
   "/bank-accounts": "Bank Accounts",
+  "/cash-wallet": "Cash Wallet",
   "/import-export": "Import / Export",
   "/settings": "Settings",
 };

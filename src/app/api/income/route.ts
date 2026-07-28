@@ -4,6 +4,7 @@ import connect from "@/lib/db";
 import BankAccountModel from "@/models/BankAccount";
 import BankTransactionModel from "@/models/BankTransaction";
 import IncomeModel from "@/models/Income";
+import CashTransactionModel from "@/models/CashTransaction";
 
 import { ensureBankAccount, getUserId, parseIncome, serializeIncome, text as asString } from "@/lib/income-api";
 
@@ -61,6 +62,18 @@ export async function POST(request: NextRequest) {
     const input = parseIncome(await request.json());
     const bankAccount = await ensureBankAccount(userId, input.bankAccount);
     const income = await IncomeModel.create({ ...input, bankAccount, user: userId });
+
+    if (income.paymentMode === "Cash") {
+      await CashTransactionModel.recordTransaction({
+        user: userId,
+        type: "Credit",
+        amount: income.amount,
+        description: `Income: ${income.source}`,
+        date: income.date,
+        source: "Income",
+        refId: income._id,
+      });
+    }
 
     if (bankAccount) {
       await BankTransactionModel.recordTransaction({

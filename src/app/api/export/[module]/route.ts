@@ -8,6 +8,7 @@ import ExpenseModel from "@/models/Expense";
 import IncomeModel from "@/models/Income";
 import InvestmentModel from "@/models/Investment";
 import LendingModel from "@/models/Lending";
+import CashTransactionModel from "@/models/CashTransaction";
 const sheet = (rows: unknown[]) => XLSX.utils.aoa_to_sheet(rows as (string | number | Date | boolean | null)[][]);
 export async function GET(request: NextRequest, context: RouteContext<"/api/export/[module]">) {
   try {
@@ -31,6 +32,7 @@ export async function GET(request: NextRequest, context: RouteContext<"/api/expo
       lending: { name: "Lending", rows: () => LendingModel.find(query).lean() },
       "bank-transactions": { name: "Bank Transactions", rows: () => BankTransactionModel.find(query).lean() },
       "bank-accounts": { name: "Bank Accounts", rows: () => BankAccountModel.find({ user: session.userId }).lean() },
+      "cash-transactions": { name: "Cash Transactions", rows: () => CashTransactionModel.find(query).lean() },
     };
     if (!models[module]) return NextResponse.json({ error: "Unsupported export module." }, { status: 404 });
     const workbook = XLSX.utils.book_new();

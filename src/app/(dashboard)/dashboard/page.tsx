@@ -46,6 +46,7 @@ export default function DashboardPage() {
   const distribution = Object.entries(data.investments.distribution).map(([name, value]) => ({ name, value }));
   const cards = [
     [<Landmark />, "Total Bank Balance", data.bankBalance],
+    [<Banknote />, "Cash Balance", data.cashBalance],
     [<ArrowUpRight />, "Total Income", data.period.income],
     [<ArrowDownRight />, "Total Expense", data.period.expense],
     [<PiggyBank />, "Net Savings", data.period.netSavings],

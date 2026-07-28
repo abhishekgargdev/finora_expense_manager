@@ -6,6 +6,7 @@ import BankTransactionModel from "@/models/BankTransaction";
 import CreditCardModel from "@/models/CreditCard";
 import CreditCardTransactionModel from "@/models/CreditCardTransaction";
 import ExpenseModel from "@/models/Expense";
+import CashTransactionModel from "@/models/CashTransaction";
 
 import {
   ensureBankAccount,
@@ -85,6 +86,16 @@ export async function POST(request: NextRequest) {
     if (["UPI", "Debit Card", "Bank Transfer"].includes(String(input.paymentMode)) && !bankAccount)
       throw new Error("Choose a bank account.");
     const expense = await ExpenseModel.create({ ...input, bankAccount, creditCard, user: userId });
+    if (input.paymentMode === "Cash")
+      await CashTransactionModel.recordTransaction({
+        user: userId,
+        type: "Debit",
+        amount: expense.amount,
+        description: `Expense: ${expense.source || expense.category}`,
+        date: expense.date,
+        source: "Expense",
+        refId: expense._id,
+      });
     if (bankAccount)
       await BankTransactionModel.recordTransaction({
         user: userId,

@@ -5,6 +5,7 @@ import connect from "@/lib/db";
 import BankTransactionModel from "@/models/BankTransaction";
 import CreditCardTransactionModel from "@/models/CreditCardTransaction";
 import ExpenseModel from "@/models/Expense";
+import CashTransactionModel from "@/models/CashTransaction";
 
 async function getExpense(id: string, userId: string) {
   const expense = await ExpenseModel.findOne({ _id: id, user: userId });
@@ -33,7 +34,19 @@ async function updateExpense(request: NextRequest, context: RouteContext<"/api/e
       throw new Error("Choose a bank account.");
     const amount = typeof input.amount === "number" ? input.amount : expense.amount;
     const bankChanged = bankAccount !== expense.bankAccount?.toString() || amount !== expense.amount;
+    const cashChanged =
+      (expense.paymentMode === "Cash" && (paymentMode !== "Cash" || amount !== expense.amount)) ||
+      (paymentMode === "Cash" && expense.paymentMode !== "Cash");
 
+    if (cashChanged && expense.paymentMode === "Cash")
+      await CashTransactionModel.recordTransaction({
+        user: userId,
+        type: "Credit",
+        amount: expense.amount,
+        description: `Expense adjustment: ${expense.source || expense.category}`,
+        source: "Expense",
+        refId: expense._id,
+      });
     if (bankChanged && expense.bankAccount)
       await BankTransactionModel.recordTransaction({
         user: userId,
@@ -47,6 +60,16 @@ async function updateExpense(request: NextRequest, context: RouteContext<"/api/e
     await CreditCardTransactionModel.deleteMany({ user: userId, expenseRef: expense._id });
     Object.assign(expense, input, { paymentMode, bankAccount, creditCard });
     await expense.save();
+    if (cashChanged && paymentMode === "Cash")
+      await CashTransactionModel.recordTransaction({
+        user: userId,
+        type: "Debit",
+        amount: expense.amount,
+        description: `Expense: ${expense.source || expense.category}`,
+        date: expense.date,
+        source: "Expense",
+        refId: expense._id,
+      });
     if (bankChanged && bankAccount)
       await BankTransactionModel.recordTransaction({
         user: userId,
@@ -92,6 +115,15 @@ export async function DELETE(_: NextRequest, context: RouteContext<"/api/expense
       await BankTransactionModel.recordTransaction({
         user: userId,
         bankAccount: expense.bankAccount,
+        type: "Credit",
+        amount: expense.amount,
+        description: `Expense removal: ${expense.source || expense.category}`,
+        source: "Expense",
+        refId: expense._id,
+      });
+    if (expense.paymentMode === "Cash")
+      await CashTransactionModel.recordTransaction({
+        user: userId,
         type: "Credit",
         amount: expense.amount,
         description: `Expense removal: ${expense.source || expense.category}`,
