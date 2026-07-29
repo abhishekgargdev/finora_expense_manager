@@ -52,8 +52,13 @@ export default function GroupExpensesPage() {
   const [settleOpen, setSettleOpen] = React.useState(false);
 
   // Bank & Credit Card Lists
-  const [bankAccounts, setBankAccounts] = React.useState<{ id: string; name: string; last4Digits?: string }[]>([]);
+  const [bankAccounts, setBankAccounts] = React.useState<{ id: string; bankName: string; accountName?: string; last4Digits?: string }[]>([]);
   const [creditCards, setCreditCards] = React.useState<{ id: string; name: string; last4Digits: string }[]>([]);
+
+  const getBankAccountLabel = React.useCallback((acc?: { bankName: string; accountName?: string }) => {
+    if (!acc) return "";
+    return acc.accountName ? `${acc.bankName} (${acc.accountName})` : acc.bankName;
+  }, []);
 
   // Create Group Form
   const [groupForm, setGroupForm] = React.useState({
@@ -627,7 +632,7 @@ export default function GroupExpensesPage() {
                           <SelectContent>
                             {bankAccounts.map((acc) => (
                               <SelectItem key={acc.id} value={acc.id}>
-                                {acc.name} {acc.last4Digits ? `· ${acc.last4Digits}` : ""}
+                                {getBankAccountLabel(acc)} {acc.last4Digits ? `· ${acc.last4Digits}` : ""}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -808,7 +813,7 @@ export default function GroupExpensesPage() {
                           <SelectContent>
                             {bankAccounts.map((acc) => (
                               <SelectItem key={acc.id} value={acc.id}>
-                                {acc.name} {acc.last4Digits ? `· ${acc.last4Digits}` : ""}
+                                {getBankAccountLabel(acc)} {acc.last4Digits ? `· ${acc.last4Digits}` : ""}
                               </SelectItem>
                             ))}
                           </SelectContent>

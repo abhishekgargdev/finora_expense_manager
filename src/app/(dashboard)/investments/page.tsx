@@ -1254,7 +1254,7 @@ export default function InvestmentsPage() {
                       <SelectContent>
                         {bankAccounts.map((account) => (
                           <SelectItem key={account.id} value={account.id}>
-                            {account.accountName || account.bankName} {account.last4Digits ? `(***${account.last4Digits})` : ""}
+                            {account.accountName ? `${account.bankName} (${account.accountName})` : account.bankName} {account.last4Digits ? `(***${account.last4Digits})` : ""}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1395,7 +1395,7 @@ export default function InvestmentsPage() {
                 <SelectContent>
                   {bankAccounts.map((account) => (
                     <SelectItem key={account.id} value={account.id}>
-                      {account.accountName || account.bankName} {account.last4Digits ? `(***${account.last4Digits})` : ""}
+                      {account.accountName ? `${account.bankName} (${account.accountName})` : account.bankName} {account.last4Digits ? `(***${account.last4Digits})` : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>

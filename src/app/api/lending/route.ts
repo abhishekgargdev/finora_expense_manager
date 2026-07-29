@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
       lending: lending.map(serializeLending),
       bankAccounts: bankAccounts.map((account) => ({
         id: account._id.toString(),
-        name: account.accountName || account.bankName,
+        name: account.accountName ? `${account.bankName} (${account.accountName})` : account.bankName,
         last4Digits: account.last4Digits,
       })),
     });

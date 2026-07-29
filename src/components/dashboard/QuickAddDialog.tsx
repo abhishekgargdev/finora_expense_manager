@@ -79,8 +79,13 @@ export default function QuickAddDialog({ open, onOpenChange, onSuccess }: Props)
 
   // Lists fetched from APIs
   const [categories, setCategories] = React.useState<{ id: string; name: string; type: string }[]>([]);
-  const [bankAccounts, setBankAccounts] = React.useState<{ id: string; name: string; last4Digits?: string }[]>([]);
+  const [bankAccounts, setBankAccounts] = React.useState<{ id: string; bankName: string; accountName?: string; last4Digits?: string }[]>([]);
   const [creditCards, setCreditCards] = React.useState<{ id: string; name: string; last4Digits: string }[]>([]);
+
+  const getBankAccountLabel = React.useCallback((acc?: { bankName: string; accountName?: string }) => {
+    if (!acc) return "";
+    return acc.accountName ? `${acc.bankName} (${acc.accountName})` : acc.bankName;
+  }, []);
 
   // Fetch helper lists on mount/open
   React.useEffect(() => {
@@ -461,7 +466,7 @@ export default function QuickAddDialog({ open, onOpenChange, onSuccess }: Props)
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Choose a bank account">
                         {bankAccount
-                          ? bankAccounts.find((a) => a.id === bankAccount)?.name +
+                          ? getBankAccountLabel(bankAccounts.find((a) => a.id === bankAccount)) +
                             (bankAccounts.find((a) => a.id === bankAccount)?.last4Digits
                               ? ` · ${bankAccounts.find((a) => a.id === bankAccount)?.last4Digits}`
                               : "")
@@ -471,7 +476,7 @@ export default function QuickAddDialog({ open, onOpenChange, onSuccess }: Props)
                     <SelectContent>
                       {bankAccounts.map((acc) => (
                         <SelectItem key={acc.id} value={acc.id}>
-                          {acc.name} {acc.last4Digits ? `· ${acc.last4Digits}` : ""}
+                          {getBankAccountLabel(acc)} {acc.last4Digits ? `· ${acc.last4Digits}` : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -574,7 +579,7 @@ export default function QuickAddDialog({ open, onOpenChange, onSuccess }: Props)
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="No linked account">
                       {bankAccount
-                        ? bankAccounts.find((a) => a.id === bankAccount)?.name +
+                        ? getBankAccountLabel(bankAccounts.find((a) => a.id === bankAccount)) +
                           (bankAccounts.find((a) => a.id === bankAccount)?.last4Digits
                             ? ` · ${bankAccounts.find((a) => a.id === bankAccount)?.last4Digits}`
                             : "")
@@ -585,7 +590,7 @@ export default function QuickAddDialog({ open, onOpenChange, onSuccess }: Props)
                     <SelectItem value="none">No linked account</SelectItem>
                     {bankAccounts.map((acc) => (
                       <SelectItem key={acc.id} value={acc.id}>
-                        {acc.name} {acc.last4Digits ? `· ${acc.last4Digits}` : ""}
+                        {getBankAccountLabel(acc)} {acc.last4Digits ? `· ${acc.last4Digits}` : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -873,7 +878,7 @@ export default function QuickAddDialog({ open, onOpenChange, onSuccess }: Props)
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Choose an account (optional)">
                             {bankAccount && bankAccount !== "none"
-                              ? bankAccounts.find((a) => a.id === bankAccount)?.name +
+                              ? getBankAccountLabel(bankAccounts.find((a) => a.id === bankAccount)) +
                                 (bankAccounts.find((a) => a.id === bankAccount)?.last4Digits
                                   ? ` · ${bankAccounts.find((a) => a.id === bankAccount)?.last4Digits}`
                                   : "")
@@ -884,7 +889,7 @@ export default function QuickAddDialog({ open, onOpenChange, onSuccess }: Props)
                           <SelectItem value="none">Choose an account (optional)</SelectItem>
                           {bankAccounts.map((acc) => (
                             <SelectItem key={acc.id} value={acc.id}>
-                              {acc.name} {acc.last4Digits ? `· ${acc.last4Digits}` : ""}
+                              {getBankAccountLabel(acc)} {acc.last4Digits ? `· ${acc.last4Digits}` : ""}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -986,7 +991,7 @@ export default function QuickAddDialog({ open, onOpenChange, onSuccess }: Props)
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="No bank account">
                       {bankAccount
-                        ? bankAccounts.find((a) => a.id === bankAccount)?.name +
+                        ? getBankAccountLabel(bankAccounts.find((a) => a.id === bankAccount)) +
                           (bankAccounts.find((a) => a.id === bankAccount)?.last4Digits
                             ? ` · ${bankAccounts.find((a) => a.id === bankAccount)?.last4Digits}`
                             : "")
@@ -997,7 +1002,7 @@ export default function QuickAddDialog({ open, onOpenChange, onSuccess }: Props)
                     <SelectItem value="none">No bank account</SelectItem>
                     {bankAccounts.map((acc) => (
                       <SelectItem key={acc.id} value={acc.id}>
-                        {acc.name} {acc.last4Digits ? `· ${acc.last4Digits}` : ""}
+                        {getBankAccountLabel(acc)} {acc.last4Digits ? `· ${acc.last4Digits}` : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>

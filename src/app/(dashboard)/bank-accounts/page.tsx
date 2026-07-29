@@ -457,7 +457,7 @@ function AccountVisual({ account, className = "" }: { account: BankAccount; clas
           <p className="text-sm text-white/70">Current balance</p>
           <MoneyText value={balance} className="mt-1 text-3xl font-bold tracking-tight" />
           <div className="mt-4 flex justify-between text-xs uppercase tracking-wider text-white/75">
-            <span>{account.accountName || account.bankName}</span>
+            <span>{account.accountName ? `${account.bankName} (${account.accountName})` : account.bankName}</span>
             <span>•••• {account.last4Digits || "----"}</span>
           </div>
         </div>
@@ -742,7 +742,9 @@ function TransferDialog({
                   {fromAccountId
                     ? (() => {
                         const acc = accounts.find((a) => a.id === fromAccountId);
-                        return acc ? `${acc.accountName || acc.bankName} (•••• ${acc.last4Digits || "----"})` : undefined;
+                        return acc
+                          ? `${acc.accountName ? `${acc.bankName} (${acc.accountName})` : acc.bankName} (•••• ${acc.last4Digits || "----"})`
+                          : undefined;
                       })()
                     : undefined}
                 </SelectValue>
@@ -750,7 +752,7 @@ function TransferDialog({
               <SelectContent>
                 {accounts.map((account) => (
                   <SelectItem key={account.id} value={account.id}>
-                    {account.accountName || account.bankName} (•••• {account.last4Digits || "----"})
+                    {account.accountName ? `${account.bankName} (${account.accountName})` : account.bankName} (•••• {account.last4Digits || "----"})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -765,7 +767,9 @@ function TransferDialog({
                   {toAccountId
                     ? (() => {
                         const acc = accounts.find((a) => a.id === toAccountId);
-                        return acc ? `${acc.accountName || acc.bankName} (•••• ${acc.last4Digits || "----"})` : undefined;
+                        return acc
+                          ? `${acc.accountName ? `${acc.bankName} (${acc.accountName})` : acc.bankName} (•••• ${acc.last4Digits || "----"})`
+                          : undefined;
                       })()
                     : undefined}
                 </SelectValue>
@@ -773,7 +777,7 @@ function TransferDialog({
               <SelectContent>
                 {destinationAccounts.map((account) => (
                   <SelectItem key={account.id} value={account.id}>
-                    {account.accountName || account.bankName} (•••• {account.last4Digits || "----"})
+                    {account.accountName ? `${account.bankName} (${account.accountName})` : account.bankName} (•••• {account.last4Digits || "----"})
                   </SelectItem>
                 ))}
               </SelectContent>

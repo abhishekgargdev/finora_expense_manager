@@ -39,7 +39,11 @@ const today = () => format(new Date(), "yyyy-MM-dd");
 
 export default function CashWalletPage() {
   const { balance, transactions, isLoading, isMutating, load, recordTransaction, transfer } = useCashWallet();
-  const [bankAccounts, setBankAccounts] = React.useState<{ id: string; name: string; last4Digits?: string; currentBalance: number }[]>([]);
+  const [bankAccounts, setBankAccounts] = React.useState<{ id: string; bankName: string; accountName?: string; last4Digits?: string; currentBalance: number }[]>([]);
+  const getBankAccountLabel = React.useCallback((acc?: { bankName: string; accountName?: string }) => {
+    if (!acc) return "";
+    return acc.accountName ? `${acc.bankName} (${acc.accountName})` : acc.bankName;
+  }, []);
   const [loadingAccounts, setLoadingAccounts] = React.useState(false);
   const [transactionOpen, setTransactionOpen] = React.useState(false);
   const [transferOpen, setTransferOpen] = React.useState(false);
@@ -390,7 +394,7 @@ export default function CashWalletPage() {
                     {transferForm.bankAccountId
                       ? (() => {
                           const acc = bankAccounts.find((a) => a.id === transferForm.bankAccountId);
-                          return acc ? `${acc.name} (•••• ${acc.last4Digits || "----"})` : undefined;
+                          return acc ? `${getBankAccountLabel(acc)} (•••• ${acc.last4Digits || "----"})` : undefined;
                         })()
                       : undefined}
                   </SelectValue>
@@ -398,7 +402,7 @@ export default function CashWalletPage() {
                 <SelectContent>
                   {bankAccounts.map((account) => (
                     <SelectItem key={account.id} value={account.id}>
-                      {account.name} (•••• {account.last4Digits || "----"}) · Balance: ₹{account.currentBalance.toLocaleString()}
+                      {getBankAccountLabel(account)} (•••• {account.last4Digits || "----"}) · Balance: ₹{account.currentBalance.toLocaleString()}
                     </SelectItem>
                   ))}
                 </SelectContent>
