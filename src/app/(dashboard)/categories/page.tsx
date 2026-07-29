@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { motion } from "framer-motion";
 
 import EmptyState from "@/components/finance/EmptyState";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import LoaderOverlay from "@/components/loader/LoaderOverlay";
 import PageSkeleton from "@/components/loader/PageSkeleton";
 import { Button } from "@/components/ui/button";
@@ -65,17 +66,11 @@ export default function CategoriesPage() {
     }
   }
 
-  async function deleteCategory(id: string, name: string) {
-    if (
-      !window.confirm(
-        `Are you sure you want to delete the category "${name}"?\nAny transactions using this category will be reset to "Other".`
-      )
-    ) {
-      return;
-    }
-
+  const [categoryToDelete, setCategoryToDelete] = React.useState<{ id: string; name: string } | null>(null);
+  async function deleteCategory() {
+    if (!categoryToDelete) return;
     try {
-      await remove(id);
+      await remove(categoryToDelete.id);
       toast.success("Category deleted.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to delete category.");
@@ -149,7 +144,7 @@ export default function CategoriesPage() {
                   variant="ghost"
                   size="icon-sm"
                   className="text-destructive hover:text-destructive"
-                  onClick={() => void deleteCategory(cat.id, cat.name)}
+                  onClick={() => setCategoryToDelete(cat)}
                   aria-label={`Delete ${cat.name}`}
                   disabled={cat.name === "Other"}
                 >
@@ -191,7 +186,13 @@ export default function CategoriesPage() {
           </form>
         </DialogContent>
       </Dialog>
-
+      <ConfirmDialog
+        open={!!categoryToDelete}
+        onOpenChange={(open) => !open && setCategoryToDelete(null)}
+        title="Delete Category?"
+        description={`Are you sure you want to delete the category "${categoryToDelete?.name}"? Any transactions using this category will be reset to "Other".`}
+        onConfirm={deleteCategory}
+      />
       <LoaderOverlay show={isMutating} label="Updating categories..." />
     </div>
   );

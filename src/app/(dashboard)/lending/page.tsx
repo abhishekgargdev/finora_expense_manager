@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 import { Bar, BarChart, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import EmptyState from "@/components/finance/EmptyState";
 import MoneyText from "@/components/finance/MoneyText";
 import StatCard from "@/components/finance/StatCard";
@@ -217,10 +218,11 @@ export default function LendingPage() {
       toast.error(error instanceof Error ? error.message : "Unable to record repayment.");
     }
   }
-  async function deleteEntry(entry: LendingEntry) {
-    if (!window.confirm(`Delete the entry with ${entry.person}?`)) return;
+  const [entryToDelete, setEntryToDelete] = React.useState<LendingEntry | null>(null);
+  async function deleteEntry() {
+    if (!entryToDelete) return;
     try {
-      await remove(entry.id);
+      await remove(entryToDelete.id);
       toast.success("Entry deleted.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to delete entry.");
@@ -459,7 +461,7 @@ export default function LendingPage() {
                                   size="icon-sm"
                                   variant="ghost"
                                   className="text-destructive hover:text-destructive"
-                                  onClick={() => void deleteEntry(entry)}
+                                  onClick={() => setEntryToDelete(entry)}
                                   aria-label="Delete entry"
                                 />
                               }
@@ -653,6 +655,13 @@ export default function LendingPage() {
           </form>
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={!!entryToDelete}
+        onOpenChange={(open) => !open && setEntryToDelete(null)}
+        title={entryToDelete?.type === "Given" ? "Delete Loan Record?" : "Delete Debt Record?"}
+        description={`Are you sure you want to delete this lending record with ${entryToDelete?.person}? This will permanently remove the record and adjust any associated bank transactions.`}
+        onConfirm={deleteEntry}
+      />
       <LoaderOverlay show={isMutating} label="Updating lending records..." />
     </div>
   );

@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { Cell, Pie, PieChart, Bar, BarChart, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import EmptyState from "@/components/finance/EmptyState";
 import MoneyText from "@/components/finance/MoneyText";
 import StatCard from "@/components/finance/StatCard";
@@ -214,10 +215,11 @@ export default function BankAccountsPage() {
       toast.error(error instanceof Error ? error.message : "Unable to add transaction.");
     }
   }
-  async function deleteAccount(account: BankAccount) {
-    if (!window.confirm(`Delete ${account.accountName || account.bankName}?`)) return;
+  const [accountToDelete, setAccountToDelete] = React.useState<BankAccount | null>(null);
+  async function deleteAccount() {
+    if (!accountToDelete) return;
     try {
-      await remove(account.id);
+      await remove(accountToDelete.id);
       toast.success("Bank account deleted.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to delete account.");
@@ -391,7 +393,7 @@ export default function BankAccountsPage() {
                   className="text-white/80 hover:bg-white/15 hover:text-white"
                   onClick={(e) => {
                     e.stopPropagation();
-                    void deleteAccount(account);
+                    setAccountToDelete(account);
                   }}
                   aria-label="Delete account"
                 >
@@ -427,6 +429,13 @@ export default function BankAccountsPage() {
         onOpenChange={setTransferOpen}
         accounts={accounts}
         onSubmit={submitTransfer}
+      />
+      <ConfirmDialog
+        open={!!accountToDelete}
+        onOpenChange={(open) => !open && setAccountToDelete(null)}
+        title="Delete Bank Account?"
+        description={`Are you sure you want to delete ${accountToDelete?.accountName || accountToDelete?.bankName}? This will permanently remove the account and all of its associated transactions.`}
+        onConfirm={deleteAccount}
       />
       <LoaderOverlay show={isMutating} label="Updating bank accounts..." />
     </div>

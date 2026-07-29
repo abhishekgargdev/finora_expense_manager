@@ -11,6 +11,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } f
 import EmptyState from "@/components/finance/EmptyState";
 import MoneyText from "@/components/finance/MoneyText";
 import StatCard from "@/components/finance/StatCard";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import LoaderOverlay from "@/components/loader/LoaderOverlay";
 import PageSkeleton from "@/components/loader/PageSkeleton";
 import { Button } from "@/components/ui/button";
@@ -229,10 +230,11 @@ export default function IncomePage() {
     }
   }
 
-  async function deleteIncome(entry: IncomeEntry) {
-    if (!window.confirm(`Delete ${entry.source}?`)) return;
+  const [incomeToDelete, setIncomeToDelete] = React.useState<IncomeEntry | null>(null);
+  async function deleteIncome() {
+    if (!incomeToDelete) return;
     try {
-      await remove(entry.id);
+      await remove(incomeToDelete.id);
       toast.success("Income entry deleted.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to delete income.");
@@ -372,7 +374,7 @@ export default function IncomePage() {
                                   variant="ghost"
                                   size="icon-sm"
                                   className="text-destructive hover:text-destructive"
-                                  onClick={() => void deleteIncome(entry)}
+                                  onClick={() => setIncomeToDelete(entry)}
                                   aria-label="Delete income"
                                 />
                               }
@@ -410,7 +412,7 @@ export default function IncomePage() {
                         variant="ghost"
                         size="icon-sm"
                         className="text-destructive hover:text-destructive"
-                        onClick={() => void deleteIncome(entry)}
+                        onClick={() => setIncomeToDelete(entry)}
                         aria-label="Delete income"
                       >
                         <Trash2 />
@@ -613,6 +615,13 @@ export default function IncomePage() {
           </form>
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={!!incomeToDelete}
+        onOpenChange={(open) => !open && setIncomeToDelete(null)}
+        title="Delete Income Entry?"
+        description={`Are you sure you want to delete the income entry from ${incomeToDelete?.source}? This will permanently remove it from your records and deduct the amount from any associated bank account or cash wallet.`}
+        onConfirm={deleteIncome}
+      />
       <LoaderOverlay show={isMutating} label={editing ? "Saving income..." : "Updating income..."} />
     </div>
   );

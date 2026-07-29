@@ -11,6 +11,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } f
 import EmptyState from "@/components/finance/EmptyState";
 import MoneyText from "@/components/finance/MoneyText";
 import StatCard from "@/components/finance/StatCard";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import LoaderOverlay from "@/components/loader/LoaderOverlay";
 import PageSkeleton from "@/components/loader/PageSkeleton";
 import { Button } from "@/components/ui/button";
@@ -229,10 +230,11 @@ export default function ExpensesPage() {
     }
   }
 
-  async function deleteExpense(expense: ExpenseEntry) {
-    if (!window.confirm(`Delete this ${expense.category.toLowerCase()} expense?`)) return;
+  const [expenseToDelete, setExpenseToDelete] = React.useState<ExpenseEntry | null>(null);
+  async function deleteExpense() {
+    if (!expenseToDelete) return;
     try {
-      await remove(expense.id);
+      await remove(expenseToDelete.id);
       toast.success("Expense entry deleted.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to delete expense.");
@@ -368,7 +370,7 @@ export default function ExpensesPage() {
                                   variant="ghost"
                                   size="icon-sm"
                                   className="text-destructive hover:text-destructive"
-                                  onClick={() => void deleteExpense(expense)}
+                                  onClick={() => setExpenseToDelete(expense)}
                                   aria-label="Delete expense"
                                 />
                               }
@@ -406,7 +408,7 @@ export default function ExpensesPage() {
                         variant="ghost"
                         size="icon-sm"
                         className="text-destructive hover:text-destructive"
-                        onClick={() => void deleteExpense(expense)}
+                        onClick={() => setExpenseToDelete(expense)}
                         aria-label="Delete expense"
                       >
                         <Trash2 />
@@ -633,6 +635,13 @@ export default function ExpensesPage() {
           </form>
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={!!expenseToDelete}
+        onOpenChange={(open) => !open && setExpenseToDelete(null)}
+        title="Delete Expense Entry?"
+        description={`Are you sure you want to delete this ${expenseToDelete?.category.toLowerCase()} expense? This will permanently remove it from your records and refund any associated bank account or card balance.`}
+        onConfirm={deleteExpense}
+      />
       <LoaderOverlay show={isMutating} label={editing ? "Saving expense..." : "Updating expenses..."} />
     </div>
   );

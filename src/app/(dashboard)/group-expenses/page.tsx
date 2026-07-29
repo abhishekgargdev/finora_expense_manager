@@ -18,6 +18,7 @@ import {
 import { toast } from "sonner";
 import { Cell, Bar, BarChart, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import EmptyState from "@/components/finance/EmptyState";
 import MoneyText from "@/components/finance/MoneyText";
 import StatCard from "@/components/finance/StatCard";
@@ -265,10 +266,11 @@ export default function GroupExpensesPage() {
     }
   };
 
-  const handleDeleteGroup = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this group? All splits and their associated main Expense and Lending entries will be permanently deleted and reversed.")) return;
+  const [groupToDelete, setGroupToDelete] = React.useState<string | null>(null);
+  const handleDeleteGroup = async () => {
+    if (!groupToDelete) return;
     try {
-      await deleteGroup(id);
+      await deleteGroup(groupToDelete);
       toast.success("Group deleted.");
       setSelectedGroup(null);
     } catch (err) {
@@ -346,7 +348,7 @@ export default function GroupExpensesPage() {
               <Plus />
               Add Group Expense
             </Button>
-            <Button variant="destructive" size="icon" onClick={() => void handleDeleteGroup(selectedGroup.group.id)}>
+            <Button variant="destructive" size="icon" onClick={() => setGroupToDelete(selectedGroup.group.id)}>
               <Trash2 className="size-4" />
             </Button>
           </div>
@@ -987,7 +989,13 @@ export default function GroupExpensesPage() {
           </form>
         </DialogContent>
       </Dialog>
-
+      <ConfirmDialog
+        open={!!groupToDelete}
+        onOpenChange={(open) => !open && setGroupToDelete(null)}
+        title="Delete Expense Group?"
+        description="Are you sure you want to delete this group? All splits and their associated main Expense and Lending entries will be permanently deleted and reversed."
+        onConfirm={handleDeleteGroup}
+      />
       <LoaderOverlay show={mutating} label="Loading groups..." />
     </div>
   );

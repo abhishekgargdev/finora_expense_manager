@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { Bar, BarChart, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import EmptyState from "@/components/finance/EmptyState";
 import MoneyText from "@/components/finance/MoneyText";
 import StatCard from "@/components/finance/StatCard";
@@ -198,10 +199,11 @@ export default function CreditCardsPage() {
       toast.error(error instanceof Error ? error.message : "Unable to pay bill.");
     }
   }
-  async function deleteCard(card: CreditCard) {
-    if (!window.confirm(`Delete ${card.cardName}?`)) return;
+  const [cardToDelete, setCardToDelete] = React.useState<CreditCard | null>(null);
+  async function deleteCard() {
+    if (!cardToDelete) return;
     try {
-      await remove(card.id);
+      await remove(cardToDelete.id);
       toast.success("Credit card deleted.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to delete card.");
@@ -481,7 +483,7 @@ export default function CreditCardsPage() {
                   className="text-white/80 hover:bg-white/15 hover:text-white"
                   onClick={(e) => {
                     e.stopPropagation();
-                    void deleteCard(card);
+                    setCardToDelete(card);
                   }}
                   aria-label="Delete card"
                 >
@@ -505,6 +507,13 @@ export default function CreditCardsPage() {
         />
       )}
       <CardDialog open={addOpen} onOpenChange={setAddOpen} form={form} setForm={setForm} onSubmit={submit} isEdit={!!editingCard} />
+      <ConfirmDialog
+        open={!!cardToDelete}
+        onOpenChange={(open) => !open && setCardToDelete(null)}
+        title="Delete Credit Card?"
+        description={`Are you sure you want to delete ${cardToDelete?.cardName}? This will permanently remove the card and all its transaction history.`}
+        onConfirm={deleteCard}
+      />
       <LoaderOverlay show={mutating} label="Updating credit cards..." />
     </div>
   );

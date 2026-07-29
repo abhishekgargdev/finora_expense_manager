@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import EmptyState from "@/components/finance/EmptyState";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import MoneyText from "@/components/finance/MoneyText";
 import StatCard from "@/components/finance/StatCard";
 import StatusBadge from "@/components/finance/StatusBadge";
@@ -333,10 +334,11 @@ export default function InvestmentsPage() {
     }
   }
 
-  async function deleteItem(item: InvestmentEntry) {
-    if (!window.confirm(`Delete ${item.name || item.type}?`)) return;
+  const [itemToDelete, setItemToDelete] = React.useState<InvestmentEntry | null>(null);
+  async function deleteItem() {
+    if (!itemToDelete) return;
     try {
-      await remove(item.id);
+      await remove(itemToDelete.id);
       toast.success("Investment deleted.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to delete investment.");
@@ -404,24 +406,20 @@ export default function InvestmentsPage() {
     }
   }
 
-  async function handleRevertPayment(c: ContributionEntry) {
-    if (
-      !window.confirm(
-        "Revert this installment payment? The associated expense entry and bank account debit will be deleted."
-      )
-    )
-      return;
+  const [contributionToRevert, setContributionToRevert] = React.useState<ContributionEntry | null>(null);
+  async function handleRevertPayment() {
+    if (!contributionToRevert) return;
     try {
-      const res = await updateContribution(c.id, {
+      const res = await updateContribution(contributionToRevert.id, {
         status: "Pending",
         paidDate: null,
         bankAccount: null,
       });
 
-      if (contributionsMap[c.investment]) {
+      if (contributionsMap[contributionToRevert.investment]) {
         setContributionsMap((current) => ({
           ...current,
-          [c.investment]: current[c.investment].map((item) => (item.id === c.id ? res.contribution : item)),
+          [contributionToRevert.investment]: current[contributionToRevert.investment].map((item) => (item.id === contributionToRevert.id ? res.contribution : item)),
         }));
       }
 
@@ -663,7 +661,7 @@ export default function InvestmentsPage() {
                                               variant="ghost"
                                               size="icon-sm"
                                               className="text-destructive hover:text-destructive"
-                                              onClick={() => void deleteItem(item)}
+                                              onClick={() => setItemToDelete(item)}
                                               aria-label="Delete"
                                             />
                                           }
@@ -722,13 +720,13 @@ export default function InvestmentsPage() {
                         key={item.id}
                         item={item}
                         onEdit={openEdit}
-                        onDelete={deleteItem}
+                        onDelete={setItemToDelete}
                         onExpand={toggleExpand}
                         isExpanded={!!expandedInvestments[item.id]}
                         contributions={contributionsMap[item.id] || []}
                         isLoadingContribs={!!loadingContributions[item.id]}
                         onMarkPaid={openMarkPaid}
-                        onRevertPaid={handleRevertPayment}
+                        onRevertPaid={setContributionToRevert}
                       />
                     ))}
                   </div>
@@ -812,7 +810,7 @@ export default function InvestmentsPage() {
                                         variant="ghost"
                                         size="icon-sm"
                                         className="text-destructive hover:text-destructive"
-                                        onClick={() => void deleteItem(item)}
+                                        onClick={() => setItemToDelete(item)}
                                         aria-label="Delete"
                                       />
                                     }
@@ -883,13 +881,13 @@ export default function InvestmentsPage() {
                   key={item.id}
                   item={item}
                   onEdit={openEdit}
-                  onDelete={deleteItem}
+                  onDelete={setItemToDelete}
                   onExpand={toggleExpand}
                   isExpanded={!!expandedInvestments[item.id]}
                   contributions={contributionsMap[item.id] || []}
                   isLoadingContribs={!!loadingContributions[item.id]}
                   onMarkPaid={openMarkPaid}
-                  onRevertPaid={handleRevertPayment}
+                  onRevertPaid={setContributionToRevert}
                 />
               ))}
             </div>
@@ -1441,6 +1439,20 @@ export default function InvestmentsPage() {
         </DialogContent>
       </Dialog>
 
+      <ConfirmDialog
+        open={!!itemToDelete}
+        onOpenChange={(open) => !open && setItemToDelete(null)}
+        title="Delete Investment?"
+        description={`Are you sure you want to delete ${itemToDelete?.name || itemToDelete?.type}? This will permanently remove the investment and all its logs.`}
+        onConfirm={deleteItem}
+      />
+      <ConfirmDialog
+        open={!!contributionToRevert}
+        onOpenChange={(open) => !open && setContributionToRevert(null)}
+        title="Revert Installment Payment?"
+        description="Are you sure you want to revert this installment payment? The associated expense entry and bank account debit will be permanently deleted and reversed."
+        onConfirm={handleRevertPayment}
+      />
       <LoaderOverlay show={isMutating} label={editing ? "Saving investment..." : "Updating investments..."} />
     </div>
   );
