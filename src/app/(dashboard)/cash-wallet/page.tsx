@@ -12,6 +12,8 @@ import {
   ReceiptText,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Bar, BarChart, XAxis, YAxis } from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import EmptyState from "@/components/finance/EmptyState";
 import MoneyText from "@/components/finance/MoneyText";
 import StatCard from "@/components/finance/StatCard";
@@ -89,6 +91,40 @@ export default function CashWalletPage() {
       .filter((tx) => tx.type === "Debit")
       .reduce((sum, tx) => sum + tx.amount, 0);
   }, [transactions]);
+
+  const cashChartData = React.useMemo(() => {
+    const map = new Map<string, { month: string; credit: number; debit: number }>();
+    const now = new Date();
+    // Initialize past 6 months
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = d.toISOString().slice(0, 7); // YYYY-MM
+      map.set(key, {
+        month: d.toLocaleString("default", { month: "short" }),
+        credit: 0,
+        debit: 0,
+      });
+    }
+
+    transactions.forEach((tx) => {
+      const key = new Date(tx.date).toISOString().slice(0, 7);
+      const existing = map.get(key);
+      if (existing) {
+        if (tx.type === "Credit") {
+          existing.credit += tx.amount;
+        } else {
+          existing.debit += tx.amount;
+        }
+      }
+    });
+
+    return Array.from(map.values());
+  }, [transactions]);
+
+  const cashChartConfig = {
+    credit: { label: "Cash In", color: "var(--income)" },
+    debit: { label: "Cash Out", color: "var(--expense)" },
+  } satisfies ChartConfig;
 
   const startTransfer = (direction: "Withdrawal" | "Deposit") => {
     setTransferDirection(direction);
@@ -180,13 +216,28 @@ export default function CashWalletPage() {
         </div>
       </div>
 
-      <div className="grid gap-5 md:grid-cols-[1fr_2fr]">
+      <div className="grid gap-5 lg:grid-cols-[1fr_1fr_1.2fr] items-stretch">
         <div>
           <CashVisual balance={balance} />
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
           <StatCard icon={<ArrowUpRight className="text-income" />} label="Total Cash In (All Time)" value={totalCashIn} />
           <StatCard icon={<ArrowDownRight className="text-expense" />} label="Total Cash Out (All Time)" value={totalCashOut} />
+        </div>
+        <div className="card p-5 flex flex-col justify-between">
+          <div>
+            <h3 className="font-heading text-sm font-semibold">Cash Flow Trend</h3>
+            <p className="text-xs text-muted-foreground">Credits vs Debits (Last 6 Months)</p>
+          </div>
+          <ChartContainer config={cashChartConfig} className="h-32 w-full mt-3">
+            <BarChart data={cashChartData}>
+              <XAxis dataKey="month" tickLine={false} axisLine={false} />
+              <YAxis hide />
+              <ChartTooltip content={<ChartTooltipContent />} />
+              <Bar dataKey="credit" fill="var(--income)" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="debit" fill="var(--expense)" radius={[3, 3, 0, 0]} />
+            </BarChart>
+          </ChartContainer>
         </div>
       </div>
 

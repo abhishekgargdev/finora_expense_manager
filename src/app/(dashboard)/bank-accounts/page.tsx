@@ -15,6 +15,8 @@ import {
   WalletCards,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Cell, Pie, PieChart, Bar, BarChart, XAxis, YAxis } from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import EmptyState from "@/components/finance/EmptyState";
 import MoneyText from "@/components/finance/MoneyText";
 import StatCard from "@/components/finance/StatCard";
@@ -88,6 +90,54 @@ export default function BankAccountsPage() {
     }
   }
   const total = accounts.reduce((sum, account) => sum + account.currentBalance, 0);
+
+  const balanceDistributionData = React.useMemo(() => {
+    return accounts.map((acc) => ({
+      name: acc.accountName || acc.bankName,
+      value: acc.currentBalance,
+      color: acc.themeColor || "#1e3a5f",
+    }));
+  }, [accounts]);
+
+  const balanceDistributionConfig = React.useMemo(() => {
+    const cfg: ChartConfig = {};
+    balanceDistributionData.forEach((item) => {
+      cfg[item.name.replace(/\s+/g, "_")] = { label: item.name, color: item.color };
+    });
+    return cfg;
+  }, [balanceDistributionData]);
+
+  const monthlyVolumeData = React.useMemo(() => {
+    const map = new Map<string, { month: string; credit: number; debit: number }>();
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = d.toISOString().slice(0, 7);
+      map.set(key, {
+        month: d.toLocaleString("default", { month: "short" }),
+        credit: 0,
+        debit: 0,
+      });
+    }
+    ledger.forEach((tx) => {
+      const key = new Date(tx.date).toISOString().slice(0, 7);
+      const existing = map.get(key);
+      if (existing) {
+        if (tx.type === "Credit") {
+          existing.credit += tx.amount;
+        } else {
+          existing.debit += tx.amount;
+        }
+      }
+    });
+    return Array.from(map.values());
+  }, [ledger]);
+
+  const monthlyVolumeConfig = {
+    credit: { label: "Credits", color: "var(--income)" },
+    debit: { label: "Debits", color: "var(--expense)" },
+  } satisfies ChartConfig;
+
   async function openAccount(account: BankAccount) {
     setSelected(account);
     try {
@@ -181,23 +231,42 @@ export default function BankAccountsPage() {
           <ChevronLeft />
           All accounts
         </Button>
-        <AccountVisual account={selected} className="max-w-md" />
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="font-heading text-2xl font-semibold">{selected.accountName || selected.bankName}</h2>
-            <p className="text-sm text-muted-foreground">
-              {selected.bankName} · {selected.accountType}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => startEdit(selected)}>
-              <Pencil className="size-4" />
-              Edit Account
-            </Button>
-            <Button onClick={() => setTransactionOpen(true)}>
-              <Plus />
-              Add Transaction
-            </Button>
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-stretch">
+          <AccountVisual account={selected} className="w-full max-w-md shrink-0" />
+          <div className="min-w-0 flex-1 flex flex-col justify-between">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h2 className="font-heading text-2xl font-semibold">{selected.accountName || selected.bankName}</h2>
+                <p className="text-sm text-muted-foreground">
+                  {selected.bankName} · {selected.accountType}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => startEdit(selected)}>
+                  <Pencil className="size-4" />
+                  Edit Account
+                </Button>
+                <Button onClick={() => setTransactionOpen(true)}>
+                  <Plus />
+                  Add Transaction
+                </Button>
+              </div>
+            </div>
+            <div className="card p-4 mt-4">
+              <div>
+                <h3 className="font-heading text-xs font-semibold">Account Monthly Volume</h3>
+                <p className="text-[10px] text-muted-foreground">Credits vs Debits (Last 6 Months)</p>
+              </div>
+              <ChartContainer config={monthlyVolumeConfig} className="h-28 w-full mt-2">
+                <BarChart data={monthlyVolumeData}>
+                  <XAxis dataKey="month" tickLine={false} axisLine={false} />
+                  <YAxis hide />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="credit" fill="var(--income)" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="debit" fill="var(--expense)" radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ChartContainer>
+            </div>
           </div>
         </div>
         <div className="card overflow-hidden">
@@ -271,8 +340,30 @@ export default function BankAccountsPage() {
           </Button>
         </div>
       </div>
-      <div className="max-w-sm">
-        <StatCard icon={<Landmark />} label="Total Balance" value={total} />
+      <div className="grid gap-5 lg:grid-cols-[1fr_1.5fr] items-stretch">
+        <div className="grid gap-4 max-w-sm">
+          <StatCard icon={<Landmark />} label="Total Balance" value={total} />
+        </div>
+        {accounts.length > 0 && (
+          <div className="card p-5 flex flex-col justify-between">
+            <div>
+              <h3 className="font-heading text-sm font-semibold">Balance Distribution</h3>
+              <p className="text-xs text-muted-foreground">Allocation of liquid capital across bank accounts</p>
+            </div>
+            <div className="flex justify-center mt-3">
+              <ChartContainer config={balanceDistributionConfig} className="h-36 w-full aspect-square max-w-[150px]">
+                <PieChart>
+                  <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                  <Pie data={balanceDistributionData} dataKey="value" nameKey="name" innerRadius="48%" outerRadius="72%">
+                    {balanceDistributionData.map((asset: any, index: number) => (
+                      <Cell key={index} fill={asset.color} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ChartContainer>
+            </div>
+          </div>
+        )}
       </div>
       {accounts.length ? (
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">

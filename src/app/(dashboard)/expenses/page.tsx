@@ -5,6 +5,8 @@ import { format } from "date-fns";
 import { motion } from "framer-motion";
 import { CalendarDays, CircleDollarSign, Pencil, Plus, ReceiptText, Trash2, TrendingDown } from "lucide-react";
 import { toast } from "sonner";
+import { Cell, Pie, PieChart } from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 
 import EmptyState from "@/components/finance/EmptyState";
 import MoneyText from "@/components/finance/MoneyText";
@@ -35,6 +37,7 @@ import { useCategories } from "@/hooks/useCategories";
 const PAYMENT_MODES = ["Cash", "UPI", "Debit Card", "Credit Card", "Bank Transfer"] as const;
 const BANK_PAYMENT_MODES = new Set(["UPI", "Debit Card", "Bank Transfer"]);
 const MONTHS = Array.from({ length: 12 }, (_, index) => new Date(2024, index).toLocaleString("en", { month: "long" }));
+const CHART_COLORS = ["#0f766e", "#2563eb", "#d97706", "#dc2626", "#7c3aed", "#db2777", "#4b5563"];
 
 type FormState = {
   amount: string;
@@ -105,6 +108,38 @@ export default function ExpensesPage() {
       }),
     [expenses, month, year, category]
   );
+
+  const paymentModeData = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    filtered.forEach((item) => {
+      counts[item.paymentMode] = (counts[item.paymentMode] || 0) + item.amount;
+    });
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  }, [filtered]);
+
+  const paymentConfig = React.useMemo(() => {
+    const cfg: ChartConfig = {};
+    PAYMENT_MODES.forEach((mode) => {
+      cfg[mode.replace(/\s+/g, "_")] = { label: mode };
+    });
+    return cfg;
+  }, []);
+
+  const categoryChartData = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    filtered.forEach((item) => {
+      counts[item.category] = (counts[item.category] || 0) + item.amount;
+    });
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  }, [filtered]);
+
+  const categoryConfig = React.useMemo(() => {
+    const cfg: ChartConfig = {};
+    CATEGORIES.forEach((cat) => {
+      cfg[cat.replace(/\s+/g, "_")] = { label: cat };
+    });
+    return cfg;
+  }, [CATEGORIES]);
   const monthTotal = React.useMemo(
     () =>
       expenses
@@ -280,107 +315,153 @@ export default function ExpensesPage() {
           }
         />
       ) : (
-        <>
-          <div className="card hidden overflow-hidden md:block">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Source</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Payment mode</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="w-24" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((expense) => (
-                  <TableRow key={expense.id}>
-                    <TableCell>
-                      <div className="font-medium">{expense.source || expense.category}</div>
-                      {expense.note && (
-                        <div className="mt-0.5 max-w-48 truncate text-xs text-muted-foreground">{expense.note}</div>
-                      )}
-                    </TableCell>
-                    <TableCell>{expense.category}</TableCell>
-                    <TableCell>{displayDate(expense.date)}</TableCell>
-                    <TableCell>{expense.paymentMode}</TableCell>
-                    <TableCell className="text-right">
-                      <MoneyText value={expense.amount} variant="negative" />
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex justify-end gap-1">
-                        <Tooltip>
-                          <TooltipTrigger
-                            render={
-                              <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                onClick={() => startEdit(expense)}
-                                aria-label="Edit expense"
-                              />
-                            }
-                          >
-                            <Pencil />
-                          </TooltipTrigger>
-                          <TooltipContent>Edit expense</TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger
-                            render={
-                              <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                className="text-destructive hover:text-destructive"
-                                onClick={() => void deleteExpense(expense)}
-                                aria-label="Delete expense"
-                              />
-                            }
-                          >
-                            <Trash2 />
-                          </TooltipTrigger>
-                          <TooltipContent>Delete expense</TooltipContent>
-                        </Tooltip>
-                      </div>
-                    </TableCell>
+        <div className="grid gap-6 lg:grid-cols-[2.2fr_1fr] items-start">
+          <div className="space-y-4">
+            <div className="card hidden overflow-hidden md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Source</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Payment mode</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="w-24" />
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-          <div className="grid gap-3 md:hidden">
-            {filtered.map((expense) => (
-              <article key={expense.id} className="card p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="font-medium">{expense.source || expense.category}</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {expense.category} · {displayDate(expense.date)}
-                    </p>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((expense) => (
+                    <TableRow key={expense.id}>
+                      <TableCell>
+                        <div className="font-medium">{expense.source || expense.category}</div>
+                        {expense.note && (
+                          <div className="mt-0.5 max-w-48 truncate text-xs text-muted-foreground">{expense.note}</div>
+                        )}
+                      </TableCell>
+                      <TableCell>{expense.category}</TableCell>
+                      <TableCell>{displayDate(expense.date)}</TableCell>
+                      <TableCell>{expense.paymentMode}</TableCell>
+                      <TableCell className="text-right">
+                        <MoneyText value={expense.amount} variant="negative" />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-1">
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  onClick={() => startEdit(expense)}
+                                  aria-label="Edit expense"
+                                />
+                              }
+                            >
+                              <Pencil />
+                            </TooltipTrigger>
+                            <TooltipContent>Edit expense</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  className="text-destructive hover:text-destructive"
+                                  onClick={() => void deleteExpense(expense)}
+                                  aria-label="Delete expense"
+                                />
+                              }
+                            >
+                              <Trash2 />
+                            </TooltipTrigger>
+                            <TooltipContent>Delete expense</TooltipContent>
+                          </Tooltip>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="grid gap-3 md:hidden">
+              {filtered.map((expense) => (
+                <article key={expense.id} className="card p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="font-medium">{expense.source || expense.category}</h3>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {expense.category} · {displayDate(expense.date)}
+                      </p>
+                    </div>
+                    <MoneyText value={expense.amount} variant="negative" className="font-semibold" />
                   </div>
-                  <MoneyText value={expense.amount} variant="negative" className="font-semibold" />
-                </div>
-                <div className="mt-4 flex items-center justify-between border-t pt-3 text-sm text-muted-foreground">
-                  <span>{expense.paymentMode}</span>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon-sm" onClick={() => startEdit(expense)} aria-label="Edit expense">
-                      <Pencil />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => void deleteExpense(expense)}
-                      aria-label="Delete expense"
-                    >
-                      <Trash2 />
-                    </Button>
+                  <div className="mt-4 flex items-center justify-between border-t pt-3 text-sm text-muted-foreground">
+                    <span>{expense.paymentMode}</span>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon-sm" onClick={() => startEdit(expense)} aria-label="Edit expense">
+                        <Pencil />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => void deleteExpense(expense)}
+                        aria-label="Delete expense"
+                      >
+                        <Trash2 />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </article>
-            ))}
+                </article>
+              ))}
+            </div>
           </div>
-        </>
+
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-1">
+            {paymentModeData.length > 0 && (
+              <div className="card p-5">
+                <div>
+                  <h3 className="font-heading text-sm font-semibold">Payment Mode Share</h3>
+                  <p className="text-xs text-muted-foreground">Spending share by mode</p>
+                </div>
+                <div className="flex justify-center mt-3">
+                  <ChartContainer config={paymentConfig} className="h-36 w-full aspect-square max-w-[150px]">
+                    <PieChart>
+                      <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                      <Pie data={paymentModeData} dataKey="value" nameKey="name" innerRadius="45%" outerRadius="70%">
+                        {paymentModeData.map((_, index) => (
+                          <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ChartContainer>
+                </div>
+              </div>
+            )}
+
+            {categoryChartData.length > 0 && (
+              <div className="card p-5">
+                <div>
+                  <h3 className="font-heading text-sm font-semibold">Category Breakdown</h3>
+                  <p className="text-xs text-muted-foreground">Spending share by categories</p>
+                </div>
+                <div className="flex justify-center mt-3">
+                  <ChartContainer config={categoryConfig} className="h-36 w-full aspect-square max-w-[150px]">
+                    <PieChart>
+                      <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                      <Pie data={categoryChartData} dataKey="value" nameKey="name" innerRadius="45%" outerRadius="70%">
+                        {categoryChartData.map((_, index) => (
+                          <Cell key={index} fill={CHART_COLORS[(index + 2) % CHART_COLORS.length]} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ChartContainer>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       )}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-lg">

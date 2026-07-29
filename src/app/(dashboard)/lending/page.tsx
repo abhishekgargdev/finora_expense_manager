@@ -14,6 +14,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Bar, BarChart, XAxis, YAxis } from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import EmptyState from "@/components/finance/EmptyState";
 import MoneyText from "@/components/finance/MoneyText";
 import StatCard from "@/components/finance/StatCard";
@@ -123,6 +125,24 @@ export default function LendingPage() {
       )
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [lending]);
+
+  const lendingChartData = React.useMemo(() => {
+    return groups
+      .map((group) => {
+        const person = group[0].person;
+        const totalAmount = group.reduce((sum, entry) => sum + entry.amount, 0);
+        const returned = group.reduce((sum, entry) => sum + entry.amountReturned, 0);
+        const remaining = totalAmount - returned;
+        return { name: person, pending: remaining };
+      })
+      .filter((item) => item.pending > 0)
+      .sort((a, b) => b.pending - a.pending)
+      .slice(0, 6);
+  }, [groups]);
+
+  const lendingChartConfig = {
+    pending: { label: "Pending Balance", color: tab === "Given" ? "var(--income)" : "var(--expense)" },
+  } satisfies ChartConfig;
 
   const setEntry = <K extends keyof EntryForm>(key: K, value: EntryForm[K]) =>
     setEntryForm((current) => ({ ...current, [key]: value }));
@@ -236,13 +256,37 @@ export default function LendingPage() {
         </TabsList>
       </Tabs>
       {tab !== "History" && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <StatCard icon={<HandCoins />} label={tab === "Given" ? "Total Given" : "Total Taken"} value={total} />
-          <StatCard
-            icon={<RotateCcw />}
-            label={tab === "Given" ? "Pending to Receive" : "Pending to Pay"}
-            value={pending}
-          />
+        <div className="grid gap-5 lg:grid-cols-[1fr_1.5fr] items-stretch">
+          <div className="grid gap-4">
+            <StatCard icon={<HandCoins />} label={tab === "Given" ? "Total Given" : "Total Taken"} value={total} />
+            <StatCard
+              icon={<RotateCcw />}
+              label={tab === "Given" ? "Pending to Receive" : "Pending to Pay"}
+              value={pending}
+            />
+          </div>
+          {lendingChartData.length > 0 && (
+            <div className="card p-5 flex flex-col justify-between">
+              <div>
+                <h3 className="font-heading text-sm font-semibold">
+                  {tab === "Given" ? "Top Borrowers" : "Top Lenders"}
+                </h3>
+                <p className="text-xs text-muted-foreground">Pending balances per person</p>
+              </div>
+              <ChartContainer config={lendingChartConfig} className="h-32 w-full mt-3">
+                <BarChart data={lendingChartData} layout="vertical" margin={{ left: -10, right: 10 }}>
+                  <XAxis type="number" hide />
+                  <YAxis dataKey="name" type="category" width={90} tickLine={false} axisLine={false} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar
+                    dataKey="pending"
+                    fill={tab === "Given" ? "var(--income)" : "var(--expense)"}
+                    radius={[0, 3, 3, 0]}
+                  />
+                </BarChart>
+              </ChartContainer>
+            </div>
+          )}
         </div>
       )}
       {tab === "History" ? (

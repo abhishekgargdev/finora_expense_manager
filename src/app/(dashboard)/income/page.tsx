@@ -5,6 +5,8 @@ import { format } from "date-fns";
 import { motion } from "framer-motion";
 import { CalendarDays, CircleDollarSign, Pencil, Plus, Trash2, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
+import { Cell, Pie, PieChart } from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 
 import EmptyState from "@/components/finance/EmptyState";
 import MoneyText from "@/components/finance/MoneyText";
@@ -33,6 +35,7 @@ import { useSearchParams } from "next/navigation";
 import { useCategories } from "@/hooks/useCategories";
 
 const PAYMENT_MODES = ["Cash", "Bank Transfer", "UPI", "Other"] as const;
+const CHART_COLORS = ["#0f766e", "#2563eb", "#d97706", "#dc2626", "#7c3aed", "#db2777", "#4b5563"];
 const monthNames = Array.from({ length: 12 }, (_, index) =>
   new Date(2024, index).toLocaleString("en", { month: "long" })
 );
@@ -116,6 +119,39 @@ export default function IncomePage() {
       }),
     [income, month, year, category]
   );
+
+  const paymentModeData = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    filteredIncome.forEach((item) => {
+      counts[item.paymentMode] = (counts[item.paymentMode] || 0) + item.amount;
+    });
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  }, [filteredIncome]);
+
+  const paymentConfig = React.useMemo(() => {
+    const cfg: ChartConfig = {};
+    PAYMENT_MODES.forEach((mode) => {
+      cfg[mode.replace(/\s+/g, "_")] = { label: mode };
+    });
+    return cfg;
+  }, []);
+
+  const categoryChartData = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    filteredIncome.forEach((item) => {
+      const cat = item.category || "Uncategorized";
+      counts[cat] = (counts[cat] || 0) + item.amount;
+    });
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  }, [filteredIncome]);
+
+  const categoryConfig = React.useMemo(() => {
+    const cfg: ChartConfig = {};
+    CATEGORIES.forEach((cat) => {
+      cfg[cat.replace(/\s+/g, "_")] = { label: cat };
+    });
+    return cfg;
+  }, [CATEGORIES]);
 
   const monthlyTotal = React.useMemo(
     () =>
@@ -283,107 +319,153 @@ export default function IncomePage() {
           }
         />
       ) : (
-        <>
-          <div className="card hidden overflow-hidden md:block">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Source</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Payment mode</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="w-24" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredIncome.map((entry) => (
-                  <TableRow key={entry.id}>
-                    <TableCell>
-                      <div className="font-medium">{entry.source}</div>
-                      {entry.note && (
-                        <div className="mt-0.5 max-w-48 truncate text-xs text-muted-foreground">{entry.note}</div>
-                      )}
-                    </TableCell>
-                    <TableCell>{entry.category ?? "Uncategorized"}</TableCell>
-                    <TableCell>{formatDate(entry.date)}</TableCell>
-                    <TableCell>{entry.paymentMode}</TableCell>
-                    <TableCell className="text-right">
-                      <MoneyText value={entry.amount} variant="positive" />
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex justify-end gap-1">
-                        <Tooltip>
-                          <TooltipTrigger
-                            render={
-                              <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                onClick={() => openEdit(entry)}
-                                aria-label="Edit income"
-                              />
-                            }
-                          >
-                            <Pencil />
-                          </TooltipTrigger>
-                          <TooltipContent>Edit income</TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger
-                            render={
-                              <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                className="text-destructive hover:text-destructive"
-                                onClick={() => void deleteIncome(entry)}
-                                aria-label="Delete income"
-                              />
-                            }
-                          >
-                            <Trash2 />
-                          </TooltipTrigger>
-                          <TooltipContent>Delete income</TooltipContent>
-                        </Tooltip>
-                      </div>
-                    </TableCell>
+        <div className="grid gap-6 lg:grid-cols-[2.2fr_1fr] items-start">
+          <div className="space-y-4">
+            <div className="card hidden overflow-hidden md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Source</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Payment mode</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="w-24" />
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-          <div className="grid gap-3 md:hidden">
-            {filteredIncome.map((entry) => (
-              <article key={entry.id} className="card p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="font-medium">{entry.source}</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {entry.category ?? "Uncategorized"} · {formatDate(entry.date)}
-                    </p>
+                </TableHeader>
+                <TableBody>
+                  {filteredIncome.map((entry) => (
+                    <TableRow key={entry.id}>
+                      <TableCell>
+                        <div className="font-medium">{entry.source}</div>
+                        {entry.note && (
+                          <div className="mt-0.5 max-w-48 truncate text-xs text-muted-foreground">{entry.note}</div>
+                        )}
+                      </TableCell>
+                      <TableCell>{entry.category ?? "Uncategorized"}</TableCell>
+                      <TableCell>{formatDate(entry.date)}</TableCell>
+                      <TableCell>{entry.paymentMode}</TableCell>
+                      <TableCell className="text-right">
+                        <MoneyText value={entry.amount} variant="positive" />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-1">
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  onClick={() => openEdit(entry)}
+                                  aria-label="Edit income"
+                                />
+                              }
+                            >
+                              <Pencil />
+                            </TooltipTrigger>
+                            <TooltipContent>Edit income</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  className="text-destructive hover:text-destructive"
+                                  onClick={() => void deleteIncome(entry)}
+                                  aria-label="Delete income"
+                                />
+                              }
+                            >
+                              <Trash2 />
+                            </TooltipTrigger>
+                            <TooltipContent>Delete income</TooltipContent>
+                          </Tooltip>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="grid gap-3 md:hidden">
+              {filteredIncome.map((entry) => (
+                <article key={entry.id} className="card p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="font-medium">{entry.source}</h3>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {entry.category ?? "Uncategorized"} · {formatDate(entry.date)}
+                      </p>
+                    </div>
+                    <MoneyText value={entry.amount} variant="positive" className="font-semibold" />
                   </div>
-                  <MoneyText value={entry.amount} variant="positive" className="font-semibold" />
-                </div>
-                <div className="mt-4 flex items-center justify-between border-t pt-3 text-sm text-muted-foreground">
-                  <span>{entry.paymentMode}</span>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon-sm" onClick={() => openEdit(entry)} aria-label="Edit income">
-                      <Pencil />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => void deleteIncome(entry)}
-                      aria-label="Delete income"
-                    >
-                      <Trash2 />
-                    </Button>
+                  <div className="mt-4 flex items-center justify-between border-t pt-3 text-sm text-muted-foreground">
+                    <span>{entry.paymentMode}</span>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon-sm" onClick={() => openEdit(entry)} aria-label="Edit income">
+                        <Pencil />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => void deleteIncome(entry)}
+                        aria-label="Delete income"
+                      >
+                        <Trash2 />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </article>
-            ))}
+                </article>
+              ))}
+            </div>
           </div>
-        </>
+
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-1">
+            {paymentModeData.length > 0 && (
+              <div className="card p-5">
+                <div>
+                  <h3 className="font-heading text-sm font-semibold">Payment Mode Share</h3>
+                  <p className="text-xs text-muted-foreground">Receipts distribution by mode</p>
+                </div>
+                <div className="flex justify-center mt-3">
+                  <ChartContainer config={paymentConfig} className="h-36 w-full aspect-square max-w-[150px]">
+                    <PieChart>
+                      <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                      <Pie data={paymentModeData} dataKey="value" nameKey="name" innerRadius="45%" outerRadius="70%">
+                        {paymentModeData.map((_, index) => (
+                          <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ChartContainer>
+                </div>
+              </div>
+            )}
+
+            {categoryChartData.length > 0 && (
+              <div className="card p-5">
+                <div>
+                  <h3 className="font-heading text-sm font-semibold">Income Sources Share</h3>
+                  <p className="text-xs text-muted-foreground">Proportions of income sources</p>
+                </div>
+                <div className="flex justify-center mt-3">
+                  <ChartContainer config={categoryConfig} className="h-36 w-full aspect-square max-w-[150px]">
+                    <PieChart>
+                      <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                      <Pie data={categoryChartData} dataKey="value" nameKey="name" innerRadius="45%" outerRadius="70%">
+                        {categoryChartData.map((_, index) => (
+                          <Cell key={index} fill={CHART_COLORS[(index + 2) % CHART_COLORS.length]} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ChartContainer>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

@@ -15,6 +15,8 @@ import {
   WalletCards,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Bar, BarChart, XAxis, YAxis } from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import EmptyState from "@/components/finance/EmptyState";
 import MoneyText from "@/components/finance/MoneyText";
 import StatCard from "@/components/finance/StatCard";
@@ -73,6 +75,44 @@ export default function CreditCardsPage() {
   const totalLimit = cards.reduce((sum, card) => sum + card.creditLimit, 0);
   const outstanding = cards.reduce((sum, card) => sum + card.outstanding, 0);
   const available = cards.reduce((sum, card) => sum + card.availableCredit, 0);
+
+  const ccBreakdownData = React.useMemo(() => {
+    return cards.map((card) => ({
+      name: card.cardName,
+      outstanding: card.outstanding,
+      available: card.availableCredit,
+    }));
+  }, [cards]);
+
+  const ccBreakdownConfig = {
+    outstanding: { label: "Outstanding", color: "var(--expense)" },
+    available: { label: "Available Limit", color: "var(--income)" },
+  } satisfies ChartConfig;
+
+  const singleCcData = React.useMemo(() => {
+    const map = new Map<string, { month: string; amount: number }>();
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = d.toISOString().slice(0, 7);
+      map.set(key, {
+        month: d.toLocaleString("default", { month: "short" }),
+        amount: 0,
+      });
+    }
+    transactions.forEach((tx) => {
+      const key = new Date(tx.date).toISOString().slice(0, 7);
+      const existing = map.get(key);
+      if (existing) {
+        existing.amount += tx.amount;
+      }
+    });
+    return Array.from(map.values());
+  }, [transactions]);
+
+  const singleCcConfig = {
+    amount: { label: "Spent", color: "var(--primary)" },
+  } satisfies ChartConfig;
   async function openCard(card: CreditCard) {
     setSelected(card);
     setDetailLoading(true);
@@ -175,9 +215,9 @@ export default function CreditCardsPage() {
           <ChevronLeft />
           All cards
         </Button>
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-stretch">
           <CreditCardVisual card={selected} className="w-full max-w-md shrink-0" />
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 flex flex-col justify-between">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <h2 className="font-heading text-2xl font-semibold">{selected.cardName}</h2>
@@ -194,6 +234,20 @@ export default function CreditCardsPage() {
               <StatCard icon={<ReceiptText />} label="Outstanding" value={selected.outstanding} />
               <StatCard icon={<WalletCards />} label="Available credit" value={selected.availableCredit} />
             </div>
+          </div>
+          <div className="card p-5 min-w-[280px] lg:max-w-xs flex-1 flex flex-col justify-between">
+            <div>
+              <h4 className="font-heading text-xs font-semibold">Card Monthly Spend</h4>
+              <p className="text-[10px] text-muted-foreground">Recent transactions total</p>
+            </div>
+            <ChartContainer config={singleCcConfig} className="h-28 w-full mt-2">
+              <BarChart data={singleCcData}>
+                <XAxis dataKey="month" tickLine={false} axisLine={false} />
+                <YAxis hide />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Bar dataKey="amount" fill={selected.themeColor || "var(--primary)"} radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ChartContainer>
           </div>
         </div>
         <Tabs defaultValue="transactions">
@@ -369,10 +423,29 @@ export default function CreditCardsPage() {
           Add Card
         </Button>
       </div>
-      <div className="grid gap-4 md:grid-cols-3">
-        <StatCard icon={<Landmark />} label="Total Credit Limit" value={totalLimit} />
-        <StatCard icon={<ReceiptText />} label="Total Outstanding" value={outstanding} />
-        <StatCard icon={<Banknote />} label="Total Available Credit" value={available} />
+      <div className="grid gap-5 lg:grid-cols-[1fr_1.5fr] items-stretch">
+        <div className="grid gap-4">
+          <StatCard icon={<Landmark />} label="Total Credit Limit" value={totalLimit} />
+          <StatCard icon={<ReceiptText />} label="Total Outstanding" value={outstanding} />
+          <StatCard icon={<Banknote />} label="Total Available Credit" value={available} />
+        </div>
+        {cards.length > 0 && (
+          <div className="card p-5 flex flex-col justify-between">
+            <div>
+              <h3 className="font-heading text-sm font-semibold">Credit Limit Breakdown by Card</h3>
+              <p className="text-xs text-muted-foreground">Outstanding vs Available Limit</p>
+            </div>
+            <ChartContainer config={ccBreakdownConfig} className="h-44 w-full mt-4">
+              <BarChart data={ccBreakdownData}>
+                <XAxis dataKey="name" tickLine={false} axisLine={false} />
+                <YAxis />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Bar dataKey="outstanding" fill="var(--expense)" stackId="a" />
+                <Bar dataKey="available" fill="var(--income)" stackId="a" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ChartContainer>
+          </div>
+        )}
       </div>
       {cards.length ? (
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">

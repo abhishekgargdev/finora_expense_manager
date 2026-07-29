@@ -44,6 +44,31 @@ export default function DashboardPage() {
   }, [month, year, refreshTrigger]);
   if (!data) return <PageSkeleton variant="chart" />;
   const distribution = Object.entries(data.investments.distribution).map(([name, value]) => ({ name, value }));
+
+  const liquidAssetsData = React.useMemo(() => {
+    const list = data.accounts.map((acc: any) => ({
+      name: acc.name || acc.bankName,
+      value: acc.currentBalance,
+      color: acc.themeColor || "#1e3a5f",
+    }));
+    if (data.cashBalance > 0) {
+      list.push({
+        name: "Cash Wallet",
+        value: data.cashBalance,
+        color: "#0f766e",
+      });
+    }
+    return list;
+  }, [data]);
+
+  const liquidConfig = React.useMemo(() => {
+    const cfg: ChartConfig = {};
+    liquidAssetsData.forEach((item: any) => {
+      cfg[item.name.replace(/\s+/g, "_")] = { label: item.name, color: item.color };
+    });
+    return cfg;
+  }, [liquidAssetsData]);
+
   const cards = [
     [<Landmark />, "Total Bank Balance", data.bankBalance],
     [<Banknote />, "Cash Balance", data.cashBalance],
@@ -173,22 +198,49 @@ export default function DashboardPage() {
             </BarChart>
           </ChartContainer>
         </section>
-        <section className="card p-5">
-          <h3 className="font-heading font-semibold">Bank balances</h3>
-          <div className="mt-4 grid gap-3">
-            {data.accounts.map((account: any) => (
-              <div
-                key={account.id}
-                className="rounded-xl p-3 text-white"
-                style={{ background: `linear-gradient(135deg, ${account.themeColor || "#1e3a5f"}, #111827)` }}
-              >
-                <div className="text-xs text-white/70">
-                  {account.bankName} · •••• {account.last4Digits || "----"}
+        <section className="card p-5 flex flex-col justify-between">
+          <div>
+            <h3 className="font-heading font-semibold">Bank balances</h3>
+            <p className="text-xs text-muted-foreground">Liquid asset distribution</p>
+          </div>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 items-center">
+            <div className="grid gap-2">
+              {data.accounts.map((account: any) => (
+                <div
+                  key={account.id}
+                  className="rounded-xl p-2.5 text-white transition-all hover:scale-[1.02]"
+                  style={{ background: `linear-gradient(135deg, ${account.themeColor || "#1e3a5f"}, #111827)` }}
+                >
+                  <div className="text-[10px] text-white/70">
+                    {account.bankName} · •••• {account.last4Digits || "----"}
+                  </div>
+                  <div className="mt-0.5 text-xs font-semibold truncate">{account.name}</div>
+                  <MoneyText value={account.currentBalance} className="mt-0.5 text-base font-bold text-white" />
                 </div>
-                <div className="mt-1 text-sm font-medium">{account.name}</div>
-                <MoneyText value={account.currentBalance} className="mt-1 text-xl font-bold text-white" />
-              </div>
-            ))}
+              ))}
+              {data.cashBalance > 0 && (
+                <div
+                  className="rounded-xl p-2.5 text-white transition-all hover:scale-[1.02]"
+                  style={{ background: "linear-gradient(135deg, #0f766e, #111827)" }}
+                >
+                  <div className="text-[10px] text-white/70">Physical Wallet</div>
+                  <div className="mt-0.5 text-xs font-semibold">Cash</div>
+                  <MoneyText value={data.cashBalance} className="mt-0.5 text-base font-bold text-white" />
+                </div>
+              )}
+            </div>
+            <div className="flex justify-center">
+              <ChartContainer config={liquidConfig} className="h-32 w-full max-w-[130px] aspect-square">
+                <PieChart>
+                  <ChartTooltip content={<ChartTooltipContent nameKey="name" />} />
+                  <Pie data={liquidAssetsData} dataKey="value" nameKey="name" innerRadius="48%" outerRadius="75%">
+                    {liquidAssetsData.map((asset: any, index: number) => (
+                      <Cell key={index} fill={asset.color} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ChartContainer>
+            </div>
           </div>
         </section>
       </div>

@@ -16,6 +16,8 @@ import {
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Cell, Bar, BarChart, XAxis, YAxis } from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import EmptyState from "@/components/finance/EmptyState";
 import MoneyText from "@/components/finance/MoneyText";
 import StatCard from "@/components/finance/StatCard";
@@ -307,6 +309,15 @@ export default function GroupExpensesPage() {
     const isMutatingOrLoading = mutating || detailLoading;
     const userBalance = selectedGroup.balances["You"] || selectedGroup.balances["you"] || 0;
 
+    const memberBalancesData = selectedGroup.group.members.map((member) => {
+      const balance = selectedGroup.balances[member] || 0;
+      return { name: member, balance };
+    }).sort((a, b) => b.balance - a.balance);
+
+    const memberBalancesConfig = {
+      balance: { label: "Balance", color: "var(--primary)" },
+    } satisfies ChartConfig;
+
     return (
       <div className="space-y-6">
         <Button variant="ghost" className="-ml-3" onClick={() => setSelectedGroup(null)}>
@@ -404,31 +415,53 @@ export default function GroupExpensesPage() {
 
         {/* Balances Section */}
         <div className="grid gap-5 md:grid-cols-3">
-          <section className="card p-5 md:col-span-1">
-            <h3 className="font-heading font-semibold mb-3">Group Balances</h3>
-            <div className="space-y-3">
-              {selectedGroup.group.members.map((member) => {
-                const bal = selectedGroup.balances[member] || 0;
-                return (
-                  <div key={member} className="flex items-center justify-between text-sm py-1 border-b last:border-0 border-muted">
-                    <span className="font-medium">{member}</span>
-                    <span
-                      className={
-                        bal > 0
-                          ? "text-income font-semibold"
-                          : bal < 0
-                            ? "text-expense font-semibold"
-                            : "text-muted-foreground"
-                      }
-                    >
-                      {bal > 0 ? "Owed " : bal < 0 ? "Owes " : ""}
-                      <MoneyText value={Math.abs(bal)} />
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
+          <div className="md:col-span-1 space-y-5">
+            <section className="card p-5">
+              <h3 className="font-heading font-semibold mb-3">Group Balances</h3>
+              <div className="space-y-3">
+                {selectedGroup.group.members.map((member) => {
+                  const bal = selectedGroup.balances[member] || 0;
+                  return (
+                    <div key={member} className="flex items-center justify-between text-sm py-1 border-b last:border-0 border-muted">
+                      <span className="font-medium">{member}</span>
+                      <span
+                        className={
+                          bal > 0
+                            ? "text-income font-semibold"
+                            : bal < 0
+                              ? "text-expense font-semibold"
+                              : "text-muted-foreground"
+                        }
+                      >
+                        {bal > 0 ? "Owed " : bal < 0 ? "Owes " : ""}
+                        <MoneyText value={Math.abs(bal)} />
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className="card p-5">
+              <h3 className="font-heading font-semibold mb-2">Balance Visualization</h3>
+              <p className="text-xs text-muted-foreground mb-3">Owed (Green) vs Owes (Red)</p>
+              <ChartContainer config={memberBalancesConfig} className="h-44 w-full">
+                <BarChart data={memberBalancesData} layout="vertical" margin={{ left: -10, right: 10 }}>
+                  <XAxis type="number" hide />
+                  <YAxis dataKey="name" type="category" width={75} tickLine={false} axisLine={false} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="balance" radius={[0, 3, 3, 0]}>
+                    {memberBalancesData.map((entry, idx) => (
+                      <Cell
+                        key={idx}
+                        fill={entry.balance > 0 ? "var(--income)" : entry.balance < 0 ? "var(--expense)" : "#94a3b8"}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ChartContainer>
+            </section>
+          </div>
 
           <section className="card p-5 md:col-span-2">
             <h3 className="font-heading font-semibold mb-3">Expenses Log</h3>
