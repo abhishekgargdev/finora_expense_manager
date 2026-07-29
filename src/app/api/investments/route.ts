@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
+import { addMonths } from "date-fns";
 
 import connect from "@/lib/db";
 import InvestmentModel from "@/models/Investment";
+import InvestmentContributionModel from "@/models/InvestmentContribution";
+import ExpenseModel from "@/models/Expense";
+import BankTransactionModel from "@/models/BankTransaction";
 import { getUserId, parseInvestment, serializeInvestment } from "@/lib/investments-api";
+import {
+  calculateMaturityDate,
+  calculateLumpsumMaturity,
+  calculateRecurringMaturity,
+} from "@/lib/investment-calculations";
 
 const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
 
@@ -23,7 +32,13 @@ export async function GET(request: NextRequest) {
       };
     }
     const type = text(params.get("type") ?? params.get("category"));
-    if (type) query.type = type;
+    if (type) {
+      if (type === "Market-Linked" || type === "Fixed-Tenure") {
+        query.category = type;
+      } else {
+        query.type = type;
+      }
+    }
     const sorts: Record<string, Record<string, 1 | -1>> = {
       newest: { date: -1 },
       oldest: { date: 1 },
@@ -33,7 +48,20 @@ export async function GET(request: NextRequest) {
     const investments = await InvestmentModel.find(query)
       .sort(sorts[params.get("sort") ?? "newest"] ?? sorts.newest)
       .lean();
-    return NextResponse.json({ investments: investments.map(serializeInvestment) });
+
+    const contribCounts = await InvestmentContributionModel.aggregate([
+      { $match: { user: userId } },
+      {
+        $group: {
+          _id: "$investment",
+          total: { $sum: 1 },
+          paid: { $sum: { $cond: [{ $eq: ["$status", "Paid"] }, 1, 0] } },
+        },
+      },
+    ]);
+    const countsMap = new Map(contribCounts.map((c) => [c._id.toString(), { total: c.total, paid: c.paid }]));
+
+    return NextResponse.json({ investments: investments.map((item) => serializeInvestment(item, countsMap)) });
   } catch (error) {
     if (error instanceof Response) return error;
     return NextResponse.json(
@@ -43,12 +71,139 @@ export async function GET(request: NextRequest) {
   }
 }
 
+
 export async function POST(request: NextRequest) {
   try {
     await connect();
     const userId = await getUserId();
-    const investment = await InvestmentModel.create({ ...parseInvestment(await request.json()), user: userId });
-    return NextResponse.json({ investment: serializeInvestment(investment) }, { status: 201 });
+    const parsed = parseInvestment(await request.json());
+
+    if (parsed.category === "Fixed-Tenure") {
+      const start = new Date(parsed.startDate);
+      const tenureValue = Number(parsed.tenureValue);
+      const tenureUnit = parsed.tenureUnit;
+
+      if (!parsed.maturityDate) {
+        parsed.maturityDate = calculateMaturityDate(start, tenureValue, tenureUnit);
+      }
+
+      parsed.date = start; // align search date with investment start date
+
+      if (!parsed.expectedMaturityAmount) {
+        if (parsed.investmentMode === "Lumpsum") {
+          const principal = Number(parsed.principalAmount);
+          const rate = Number(parsed.interestRate);
+          const compounding = parsed.compoundingFrequency || "Quarterly";
+          parsed.expectedMaturityAmount = calculateLumpsumMaturity(
+            principal,
+            rate,
+            start,
+            parsed.maturityDate,
+            compounding
+          );
+        } else if (parsed.investmentMode === "Recurring") {
+          const installment = Number(parsed.installmentAmount);
+          const rate = Number(parsed.interestRate);
+          const freq = parsed.installmentFrequency || "Monthly";
+          const tenureInMonths = tenureUnit === "Years" ? tenureValue * 12 : tenureValue;
+          const totalInstallments = freq === "Quarterly" ? Math.round(tenureInMonths / 3) : tenureInMonths;
+          parsed.expectedMaturityAmount = calculateRecurringMaturity(
+            installment,
+            rate,
+            freq,
+            totalInstallments
+          );
+        }
+      }
+
+      if (parsed.investmentMode === "Lumpsum") {
+        parsed.amountInvested = Number(parsed.principalAmount);
+        parsed.currentValue = Number(parsed.principalAmount);
+      } else {
+        parsed.amountInvested = 0;
+        parsed.currentValue = 0;
+      }
+    } else {
+      if (parsed.amountInvested === undefined) {
+        throw new Error("Amount invested is required.");
+      }
+      if (parsed.currentValue === undefined) {
+        parsed.currentValue = parsed.amountInvested;
+      }
+    }
+
+    const investment = await InvestmentModel.create({ ...parsed, user: userId });
+
+    // Log Expense and record BankTransaction if Fixed-Tenure Lumpsum has bankAccount
+    if (
+      investment.category === "Fixed-Tenure" &&
+      investment.investmentMode === "Lumpsum" &&
+      investment.bankAccount &&
+      (investment.principalAmount ?? 0) > 0
+    ) {
+      const expense = await ExpenseModel.create({
+        user: userId,
+        amount: investment.principalAmount ?? 0,
+        category: "Investment",
+        source: investment.institution || "Fixed Deposit",
+        date: investment.startDate || investment.date,
+        paymentMode: "Bank Transfer",
+        bankAccount: investment.bankAccount,
+        description: `Lumpsum Investment: ${investment.name || investment.type} at ${investment.institution}`,
+      });
+
+      await BankTransactionModel.recordTransaction({
+        user: userId,
+        bankAccount: investment.bankAccount,
+        type: "Debit",
+        amount: investment.principalAmount ?? 0,
+        description: `Lumpsum Investment: ${investment.name || investment.type} at ${investment.institution}`,
+        date: investment.startDate || investment.date,
+        source: "Expense",
+        refId: expense._id,
+      });
+
+      investment.expenseRef = expense._id;
+      await investment.save();
+    }
+
+    // Generate Recurring Contributions checklist
+    if (investment.category === "Fixed-Tenure" && investment.investmentMode === "Recurring") {
+      const tenureValue = Number(investment.tenureValue);
+      const tenureUnit = investment.tenureUnit;
+      const tenureInMonths = tenureUnit === "Years" ? tenureValue * 12 : tenureValue;
+      const freq = investment.installmentFrequency || "Monthly";
+      const totalInstallments = freq === "Quarterly" ? Math.round(tenureInMonths / 3) : tenureInMonths;
+      const interval = freq === "Quarterly" ? 3 : 1;
+
+      const contributions = [];
+      for (let i = 0; i < totalInstallments; i++) {
+        const dueDate = addMonths(new Date(investment.startDate!), i * interval);
+        contributions.push({
+          user: userId,
+          investment: investment._id,
+          dueDate,
+          amount: investment.installmentAmount || 0,
+          status: "Pending",
+        });
+      }
+      if (contributions.length > 0) {
+        await InvestmentContributionModel.insertMany(contributions);
+      }
+    }
+
+
+    const countsMap = new Map();
+    if (investment.category === "Fixed-Tenure" && investment.investmentMode === "Recurring") {
+      const tenureValue = Number(investment.tenureValue);
+      const tenureUnit = investment.tenureUnit;
+      const tenureInMonths = tenureUnit === "Years" ? tenureValue * 12 : tenureValue;
+      const freq = investment.installmentFrequency || "Monthly";
+      const totalInstallments = freq === "Quarterly" ? Math.round(tenureInMonths / 3) : tenureInMonths;
+      countsMap.set(investment._id.toString(), { total: totalInstallments, paid: 0 });
+    }
+
+    return NextResponse.json({ investment: serializeInvestment(investment, countsMap) }, { status: 201 });
   } catch (error) {
     if (error instanceof Response) return error;
     return NextResponse.json(
@@ -57,3 +212,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+

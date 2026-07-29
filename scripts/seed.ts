@@ -26,9 +26,23 @@ if (fs.existsSync(envPath)) {
 }
 
 // Edit these values before running the script
-const NAME = "Abhishek Garg";
-const EMAIL = "abhishekgarg959@gmail.com";
-const PASSWORD = "Abhishek@2000";
+const USERS = [
+  {
+    name: "Abhishek Garg",
+    email: "abhishekgarg959@gmail.com",
+    password: "Abhishek@2000",
+  },
+  {
+    name: "Anil Gayakwad",
+    email: "anilgayakwad19900@gmail.com",
+    password: "AnilGayakwad@1990",
+  },
+  {
+    name: "Rajat Garg",
+    email: "rajatgarg@yopmail.com",
+    password: "RajatGarg@2026",
+  },
+];
 
 // Set to true to update password if user exists
 const SHOULD_UPDATE_IF_EXISTS = false;
@@ -43,28 +57,6 @@ async function main() {
   await mongoose.connect(MONGODB_URI);
   console.log("Connected to MongoDB");
 
-  const email = EMAIL.toLowerCase();
-  let user = await UserModel.findOne({ email }).exec();
-
-  if (user) {
-    console.log(`User with email ${email} already exists.`);
-    if (SHOULD_UPDATE_IF_EXISTS) {
-      const hash = await bcrypt.hash(PASSWORD, 10);
-      user.password = hash;
-      user.name = NAME;
-      await user.save();
-      console.log(`Updated existing user ${email}`);
-    }
-  } else {
-    const hash = await bcrypt.hash(PASSWORD, 10);
-    user = await UserModel.create({ name: NAME, email, password: hash });
-    console.log(`Created user ${email}`);
-  }
-
-  const userId = user._id;
-
-  // Seed default categories
-  console.log("Seeding common daily categories...");
   const expenseCategories = [
     "Food & Dining",
     "Groceries",
@@ -90,24 +82,48 @@ async function main() {
     "Other",
   ];
 
-  let addedCount = 0;
-  for (const cat of expenseCategories) {
-    const exists = await CategoryModel.findOne({ user: userId, name: cat, type: "Expense" }).exec();
-    if (!exists) {
-      await CategoryModel.create({ user: userId, name: cat, type: "Expense" });
-      addedCount++;
-    }
-  }
+  for (const u of USERS) {
+    const email = u.email.toLowerCase();
+    let user = await UserModel.findOne({ email }).exec();
 
-  for (const cat of incomeCategories) {
-    const exists = await CategoryModel.findOne({ user: userId, name: cat, type: "Income" }).exec();
-    if (!exists) {
-      await CategoryModel.create({ user: userId, name: cat, type: "Income" });
-      addedCount++;
+    if (user) {
+      console.log(`User with email ${email} already exists.`);
+      if (SHOULD_UPDATE_IF_EXISTS) {
+        const hash = await bcrypt.hash(u.password, 10);
+        user.password = hash;
+        user.name = u.name;
+        await user.save();
+        console.log(`Updated existing user ${email}`);
+      }
+    } else {
+      const hash = await bcrypt.hash(u.password, 10);
+      user = await UserModel.create({ name: u.name, email, password: hash });
+      console.log(`Created user ${email}`);
     }
-  }
 
-  console.log(`Category seeding completed. Added ${addedCount} new categories.`);
+    const userId = user._id;
+
+    // Seed default categories
+    console.log(`Seeding common daily categories for ${email}...`);
+    let addedCount = 0;
+    for (const cat of expenseCategories) {
+      const exists = await CategoryModel.findOne({ user: userId, name: cat, type: "Expense" }).exec();
+      if (!exists) {
+        await CategoryModel.create({ user: userId, name: cat, type: "Expense" });
+        addedCount++;
+      }
+    }
+
+    for (const cat of incomeCategories) {
+      const exists = await CategoryModel.findOne({ user: userId, name: cat, type: "Income" }).exec();
+      if (!exists) {
+        await CategoryModel.create({ user: userId, name: cat, type: "Income" });
+        addedCount++;
+      }
+    }
+
+    console.log(`Category seeding completed for ${email}. Added ${addedCount} new categories.`);
+  }
 
   await mongoose.disconnect();
   process.exit(0);
