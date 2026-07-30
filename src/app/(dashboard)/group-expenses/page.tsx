@@ -92,6 +92,46 @@ export default function GroupExpensesPage() {
     bankAccountId: "",
   });
 
+  React.useEffect(() => {
+    if (!createOpen) {
+      setGroupForm({
+        name: "",
+        description: "",
+        newMemberName: "",
+        members: ["You"],
+      });
+    }
+  }, [createOpen]);
+
+  React.useEffect(() => {
+    if (!expenseOpen) {
+      setExpenseForm({
+        description: "",
+        amount: "",
+        paidBy: "You",
+        date: today(),
+        splitType: "Equally",
+        customSplits: {},
+        paymentMode: "UPI",
+        bankAccountId: "",
+        creditCardId: "",
+      });
+    }
+  }, [expenseOpen]);
+
+  React.useEffect(() => {
+    if (!settleOpen) {
+      setSettleForm({
+        from: "",
+        to: "",
+        amount: "",
+        date: today(),
+        paymentMode: "UPI",
+        bankAccountId: "",
+      });
+    }
+  }, [settleOpen]);
+
   // Fetch Payment Options
   const fetchPaymentOptions = React.useCallback(async () => {
     try {

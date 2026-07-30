@@ -218,6 +218,14 @@ export default function ExpensesPage() {
     }
   }, [searchParams]);
 
+  React.useEffect(() => {
+    if (!open) {
+      setForm(emptyForm());
+      setEditing(null);
+      setCustomCategory("");
+    }
+  }, [open]);
+
   function startCreate() {
     setEditing(null);
     setForm(emptyForm());

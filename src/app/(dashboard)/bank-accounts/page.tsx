@@ -90,6 +90,19 @@ export default function BankAccountsPage() {
       toast.error(error instanceof Error ? error.message : "Unable to complete transfer.");
     }
   }
+  React.useEffect(() => {
+    if (!accountOpen) {
+      setAccountForm(emptyAccount());
+      setEditingAccount(null);
+    }
+  }, [accountOpen]);
+
+  React.useEffect(() => {
+    if (!transactionOpen) {
+      setTransactionForm({ type: "Credit", amount: "", description: "", date: today() });
+    }
+  }, [transactionOpen]);
+
   const total = accounts.reduce((sum, account) => sum + account.currentBalance, 0);
 
   const balanceDistributionData = React.useMemo(() => {

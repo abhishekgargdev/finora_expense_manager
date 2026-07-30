@@ -220,6 +220,14 @@ export default function IncomePage() {
     new Set([today.getFullYear(), ...income.map((entry) => new Date(entry.date).getFullYear())])
   ).sort((a, b) => b - a);
 
+  React.useEffect(() => {
+    if (!dialogOpen) {
+      setForm(newForm());
+      setEditing(null);
+      setCustomCategory("");
+    }
+  }, [dialogOpen]);
+
   function openCreate() {
     setEditing(null);
     setForm(newForm());

@@ -31,6 +31,13 @@ export default function CategoriesPage() {
   const [editingCategory, setEditingCategory] = React.useState<{ id: string; name: string } | null>(null);
   const [categoryName, setCategoryName] = React.useState("");
 
+  React.useEffect(() => {
+    if (!dialogOpen) {
+      setCategoryName("");
+      setEditingCategory(null);
+    }
+  }, [dialogOpen]);
+
   const filteredCategories = React.useMemo(() => {
     return categories.filter((cat) => cat.type === tab);
   }, [categories, tab]);

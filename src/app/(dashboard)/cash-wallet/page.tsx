@@ -83,6 +83,28 @@ export default function CashWalletPage() {
     void fetchBankAccounts();
   }, [fetchBankAccounts]);
 
+  React.useEffect(() => {
+    if (!transactionOpen) {
+      setTransactionForm({
+        type: "Credit",
+        amount: "",
+        description: "",
+        date: today(),
+      });
+    }
+  }, [transactionOpen]);
+
+  React.useEffect(() => {
+    if (!transferOpen) {
+      setTransferForm({
+        bankAccountId: "",
+        amount: "",
+        description: "",
+        date: today(),
+      });
+    }
+  }, [transferOpen]);
+
   // Statistics
   const totalCashIn = React.useMemo(() => {
     return transactions

@@ -195,6 +195,26 @@ export default function InvestmentsPage() {
     note: "",
   });
 
+  React.useEffect(() => {
+    if (!open) {
+      setForm(emptyForm());
+      setEditing(null);
+    }
+  }, [open]);
+
+  React.useEffect(() => {
+    if (!markPaidOpen) {
+      setMarkPaidForm({
+        bankAccount: "",
+        paidDate: format(new Date(), "yyyy-MM-dd"),
+        amount: "",
+        note: "",
+      });
+      setSelectedContribution(null);
+      setSelectedContributionParent(null);
+    }
+  }, [markPaidOpen]);
+
   // Upcoming maturities state
   const [upcomingMaturities, setUpcomingMaturities] = React.useState<InvestmentEntry[]>([]);
 

@@ -96,6 +96,20 @@ export default function LendingPage() {
     }
   }, [searchParams]);
 
+  React.useEffect(() => {
+    if (!entryOpen) {
+      setEntryForm(emptyEntry(tab === "History" ? "Given" : tab));
+      setEditing(null);
+    }
+  }, [entryOpen]);
+
+  React.useEffect(() => {
+    if (!repaymentOpen) {
+      setRepaymentForm(emptyRepayment());
+      setRepaying(null);
+    }
+  }, [repaymentOpen]);
+
   const entries = React.useMemo(() => {
     return lending.filter((entry) => entry.type === (tab === "History" ? "Given" : tab));
   }, [lending, tab]);
