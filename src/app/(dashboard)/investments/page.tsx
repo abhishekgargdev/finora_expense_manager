@@ -1017,7 +1017,7 @@ export default function InvestmentsPage() {
                       <CalendarDays className="mr-2 h-4 w-4" />
                       {format(new Date(`${form.date}T12:00:00`), "dd MMM yyyy")}
                     </PopoverTrigger>
-                    <PopoverContent align="start" className="w-auto p-0">
+                    <PopoverContent align="start" className="w-auto p-0" disablePortal={true}>
                       <Calendar
                         mode="single"
                         selected={new Date(`${form.date}T12:00:00`)}
@@ -1188,7 +1188,7 @@ export default function InvestmentsPage() {
                         <CalendarDays className="mr-2 h-4 w-4" />
                         {format(new Date(`${form.startDate}T12:00:00`), "dd MMM yyyy")}
                       </PopoverTrigger>
-                      <PopoverContent align="start" className="w-auto p-0">
+                      <PopoverContent align="start" className="w-auto p-0" disablePortal={true}>
                         <Calendar
                           mode="single"
                           selected={new Date(`${form.startDate}T12:00:00`)}
@@ -1272,7 +1272,7 @@ export default function InvestmentsPage() {
                           ? format(new Date(`${form.maturityDate}T12:00:00`), "dd MMM yyyy")
                           : "Defaults to auto-calc"}
                       </PopoverTrigger>
-                      <PopoverContent align="start" className="w-auto p-0">
+                      <PopoverContent align="start" className="w-auto p-0" disablePortal={true}>
                         <Calendar
                           mode="single"
                           selected={form.maturityDate ? new Date(`${form.maturityDate}T12:00:00`) : undefined}
@@ -1343,7 +1343,7 @@ export default function InvestmentsPage() {
                               <CalendarDays className="mr-2 h-4 w-4" />
                               {format(new Date(`${form.actualClosureDate}T12:00:00`), "dd MMM yyyy")}
                             </PopoverTrigger>
-                            <PopoverContent align="start" className="w-auto p-0">
+                            <PopoverContent align="start" className="w-auto p-0" disablePortal={true}>
                               <Calendar
                                 mode="single"
                                 selected={new Date(`${form.actualClosureDate}T12:00:00`)}
@@ -1403,7 +1403,7 @@ export default function InvestmentsPage() {
       </Dialog>
 
       {/* --- MARK PAID DIALOG --- */}
-      <Dialog open={markPaidOpen} onOpenChange={setOpen}>
+      <Dialog open={markPaidOpen} onOpenChange={setMarkPaidOpen}>
         <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto w-[92%] max-w-sm rounded-xl">
           <DialogHeader>
             <DialogTitle>Mark Installment Paid</DialogTitle>
@@ -1449,7 +1449,7 @@ export default function InvestmentsPage() {
                   <CalendarDays className="mr-2 h-4 w-4" />
                   {format(new Date(`${markPaidForm.paidDate}T12:00:00`), "dd MMM yyyy")}
                 </PopoverTrigger>
-                <PopoverContent align="start" className="w-auto p-0">
+                <PopoverContent align="start" className="w-auto p-0" disablePortal={true}>
                   <Calendar
                     mode="single"
                     selected={new Date(`${markPaidForm.paidDate}T12:00:00`)}
@@ -1685,7 +1685,14 @@ function FixedTenureCard({
                 <div className="text-center py-4 text-xs text-muted-foreground">No installments scheduled.</div>
               ) : (
                 <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                  {contributions.map((c) => (
+                  {contributions
+                    .filter((c) => {
+                      const currentMonthStart = new Date();
+                      currentMonthStart.setDate(1);
+                      currentMonthStart.setHours(0, 0, 0, 0);
+                      return !(c.status === "Pending" && new Date(c.dueDate) < currentMonthStart);
+                    })
+                    .map((c) => (
                     <div
                       key={c.id}
                       className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-2 rounded-lg border border-border text-xs"

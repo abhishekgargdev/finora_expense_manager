@@ -177,15 +177,22 @@ export async function POST(request: NextRequest) {
       const interval = freq === "Quarterly" ? 3 : 1;
 
       const contributions = [];
+      const currentMonthStart = new Date();
+      currentMonthStart.setDate(1);
+      currentMonthStart.setHours(0, 0, 0, 0);
+
       for (let i = 0; i < totalInstallments; i++) {
         const dueDate = addMonths(new Date(investment.startDate!), i * interval);
-        contributions.push({
-          user: userId,
-          investment: investment._id,
-          dueDate,
-          amount: investment.installmentAmount || 0,
-          status: "Pending",
-        });
+        // Only generate contributions if they are due in the current month or in the future
+        if (dueDate >= currentMonthStart) {
+          contributions.push({
+            user: userId,
+            investment: investment._id,
+            dueDate,
+            amount: investment.installmentAmount || 0,
+            status: "Pending",
+          });
+        }
       }
       if (contributions.length > 0) {
         await InvestmentContributionModel.insertMany(contributions);

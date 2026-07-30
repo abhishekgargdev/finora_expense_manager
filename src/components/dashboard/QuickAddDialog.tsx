@@ -453,7 +453,7 @@ export default function QuickAddDialog({ open, onOpenChange, onSuccess }: Props)
                       <CalendarDays className="size-4 mr-2" />
                       {format(new Date(`${date}T12:00:00`), "dd MMM yyyy")}
                     </PopoverTrigger>
-                    <PopoverContent align="start" className="w-auto p-0">
+                    <PopoverContent align="start" className="w-auto p-0" disablePortal={true}>
                       <Calendar
                         mode="single"
                         selected={new Date(`${date}T12:00:00`)}
@@ -567,7 +567,7 @@ export default function QuickAddDialog({ open, onOpenChange, onSuccess }: Props)
                       <CalendarDays className="size-4 mr-2" />
                       {format(new Date(`${date}T12:00:00`), "dd MMM yyyy")}
                     </PopoverTrigger>
-                    <PopoverContent align="start" className="w-auto p-0">
+                    <PopoverContent align="start" className="w-auto p-0" disablePortal={true}>
                       <Calendar
                         mode="single"
                         selected={new Date(`${date}T12:00:00`)}
@@ -676,7 +676,7 @@ export default function QuickAddDialog({ open, onOpenChange, onSuccess }: Props)
                           <CalendarDays className="size-4 mr-2" />
                           {format(new Date(`${date}T12:00:00`), "dd MMM yyyy")}
                         </PopoverTrigger>
-                        <PopoverContent align="start" className="w-auto p-0">
+                        <PopoverContent align="start" className="w-auto p-0" disablePortal={true}>
                           <Calendar
                             mode="single"
                             selected={new Date(`${date}T12:00:00`)}
@@ -758,7 +758,7 @@ export default function QuickAddDialog({ open, onOpenChange, onSuccess }: Props)
                           <CalendarDays className="size-4 mr-2" />
                           {format(new Date(`${date}T12:00:00`), "dd MMM yyyy")}
                         </PopoverTrigger>
-                        <PopoverContent align="start" className="w-auto p-0">
+                        <PopoverContent align="start" className="w-auto p-0" disablePortal={true}>
                           <Calendar
                             mode="single"
                             selected={new Date(`${date}T12:00:00`)}
@@ -877,7 +877,7 @@ export default function QuickAddDialog({ open, onOpenChange, onSuccess }: Props)
                           <CalendarDays className="size-4 mr-2" />
                           {maturityDate ? format(new Date(`${maturityDate}T12:00:00`), "dd MMM yyyy") : "Defaults to auto-calc"}
                         </PopoverTrigger>
-                        <PopoverContent align="start" className="w-auto p-0">
+                        <PopoverContent align="start" className="w-auto p-0" disablePortal={true}>
                           <Calendar
                             mode="single"
                             selected={maturityDate ? new Date(`${maturityDate}T12:00:00`) : undefined}
@@ -975,7 +975,7 @@ export default function QuickAddDialog({ open, onOpenChange, onSuccess }: Props)
                       <CalendarDays className="size-4 mr-2" />
                       {format(new Date(`${date}T12:00:00`), "dd MMM yyyy")}
                     </PopoverTrigger>
-                    <PopoverContent align="start" className="w-auto p-0">
+                    <PopoverContent align="start" className="w-auto p-0" disablePortal={true}>
                       <Calendar
                         mode="single"
                         selected={new Date(`${date}T12:00:00`)}
@@ -991,7 +991,7 @@ export default function QuickAddDialog({ open, onOpenChange, onSuccess }: Props)
                       <CalendarDays className="size-4 mr-2" />
                       {dueDate ? format(new Date(`${dueDate}T12:00:00`), "dd MMM yyyy") : "Choose a due date"}
                     </PopoverTrigger>
-                    <PopoverContent align="start" className="w-auto p-0">
+                    <PopoverContent align="start" className="w-auto p-0" disablePortal={true}>
                       <Calendar
                         mode="single"
                         selected={dueDate ? new Date(`${dueDate}T12:00:00`) : undefined}
