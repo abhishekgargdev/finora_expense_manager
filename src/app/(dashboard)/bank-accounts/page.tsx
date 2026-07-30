@@ -272,43 +272,45 @@ export default function BankAccountsPage() {
           </div>
         </div>
         <div className="card overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Source</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead className="text-right">Balance</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {ledger.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>{format(new Date(item.date), "dd MMM yyyy")}</TableCell>
-                  <TableCell className="font-medium">{item.description || "Transaction"}</TableCell>
-                  <TableCell>
-                    <span className="rounded-full bg-muted px-2 py-1 text-xs">{item.source}</span>
-                  </TableCell>
-                  <TableCell className={item.type === "Credit" ? "text-income" : "text-expense"}>{item.type}</TableCell>
-                  <TableCell className="text-right">
-                    <MoneyText value={item.amount} variant={item.type === "Credit" ? "positive" : "negative"} />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <MoneyText value={item.balanceAfter ?? 0} />
-                  </TableCell>
-                </TableRow>
-              ))}
-              {!ledger.length && (
+          <div className="overflow-x-auto scrollbar-thin">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
-                    No transactions recorded yet.
-                  </TableCell>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Source</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="text-right">Balance</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {ledger.map((item) => (
+                  <TableRow key={item.id} className="hover:bg-muted/30 transition-colors">
+                    <TableCell>{format(new Date(item.date), "dd MMM yyyy")}</TableCell>
+                    <TableCell className="font-medium">{item.description || "Transaction"}</TableCell>
+                    <TableCell>
+                      <span className="rounded-full bg-muted px-2 py-1 text-xs">{item.source}</span>
+                    </TableCell>
+                    <TableCell className={item.type === "Credit" ? "text-income" : "text-expense"}>{item.type}</TableCell>
+                    <TableCell className="text-right">
+                      <MoneyText value={item.amount} variant={item.type === "Credit" ? "positive" : "negative"} />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <MoneyText value={item.balanceAfter ?? 0} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {!ledger.length && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
+                      No transactions recorded yet.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </div>
         <TransactionDialog
           open={transactionOpen}

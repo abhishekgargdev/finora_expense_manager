@@ -19,9 +19,14 @@ export default function StatCard({ icon, label, value, currency = "₹", trend, 
   const count = useCountUp(value, 900);
 
   const accentClass = accent === "primary" ? "text-primary" : accent === "secondary" ? "text-secondary" : "";
-
   return (
-    <motion.div className="card p-4" variants={fadeInUp} initial="hidden" animate="show">
+    <motion.div
+      className="card p-4 hover:border-primary/25 hover:shadow-lg transition-all duration-300 cursor-pointer select-none"
+      variants={fadeInUp}
+      initial="hidden"
+      animate="show"
+      whileHover={{ y: -4, scale: 1.015 }}
+    >
       <div className="flex items-start gap-3">
         <div className="shrink-0 w-10 h-10 flex items-center justify-center rounded-lg bg-primary/6 text-primary">
           {icon}

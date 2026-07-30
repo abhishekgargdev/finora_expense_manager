@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { motion } from "framer-motion";
 import { CalendarDays, CircleDollarSign, Pencil, Plus, Trash2, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
-import { Cell, Pie, PieChart } from "recharts";
+import { Cell, Pie, PieChart, Bar, BarChart, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 
 import EmptyState from "@/components/finance/EmptyState";
@@ -30,7 +30,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { staggerContainer } from "@/lib/motion";
+import { staggerContainer, fadeInUp } from "@/lib/motion";
 import { type IncomeEntry, type IncomeInput, useIncome } from "@/hooks/useIncome";
 import { useSearchParams } from "next/navigation";
 import { useCategories } from "@/hooks/useCategories";
@@ -88,6 +88,7 @@ export default function IncomePage() {
   const [month, setMonth] = React.useState(String(today.getMonth() + 1));
   const [year, setYear] = React.useState(String(today.getFullYear()));
   const [category, setCategory] = React.useState("all");
+  const [trendTab, setTrendTab] = React.useState<"monthly" | "yearly">("monthly");
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<IncomeEntry | null>(null);
   const [form, setForm] = React.useState<FormState>(newForm);
@@ -153,6 +154,51 @@ export default function IncomePage() {
     });
     return cfg;
   }, [CATEGORIES]);
+
+  // Monthly trends (last 12 months)
+  const monthlyTrendData = React.useMemo(() => {
+    const result = [];
+    const now = new Date();
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const yearKey = d.getFullYear();
+      const monthKey = d.getMonth() + 1;
+      const label = d.toLocaleString("default", { month: "short", year: "2-digit" });
+      
+      const total = income
+        .filter((entry) => {
+          const entryDate = new Date(entry.date);
+          return entryDate.getMonth() + 1 === monthKey && entryDate.getFullYear() === yearKey;
+        })
+        .reduce((sum, entry) => sum + entry.amount, 0);
+        
+      result.push({
+        name: label,
+        income: total,
+      });
+    }
+    return result;
+  }, [income]);
+
+  // Yearly trends (all years)
+  const yearlyTrendData = React.useMemo(() => {
+    const result: Record<number, number> = {};
+    income.forEach((entry) => {
+      const y = new Date(entry.date).getFullYear();
+      result[y] = (result[y] || 0) + entry.amount;
+    });
+    const yearsSet = new Set([today.getFullYear(), ...income.map((entry) => new Date(entry.date).getFullYear())]);
+    return Array.from(yearsSet)
+      .sort((a, b) => a - b)
+      .map((y) => ({
+        name: String(y),
+        income: result[y] || 0,
+      }));
+  }, [income, today]);
+
+  const trendConfig = React.useMemo(() => ({
+    income: { label: "Income", color: "var(--income)" }
+  }), []);
 
   const monthlyTotal = React.useMemo(
     () =>
@@ -244,31 +290,78 @@ export default function IncomePage() {
   if (isLoading) return <PageSkeleton variant="table" />;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+    <motion.div
+      className="space-y-6"
+      variants={staggerContainer}
+      initial="hidden"
+      animate="show"
+    >
+      <motion.div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center" variants={fadeInUp}>
         <div>
           <h2 className="font-heading text-2xl font-semibold">Income</h2>
           <p className="mt-1 text-sm text-muted-foreground">Track every payment that adds to your finances.</p>
         </div>
-        <Button onClick={openCreate}>
+        <Button onClick={openCreate} className="hover:scale-[1.02] active:scale-[0.98] transition-all">
           <Plus />
           Add Income
         </Button>
-      </div>
+      </motion.div>
 
-      <motion.div className="grid gap-4 md:grid-cols-3" variants={staggerContainer} initial="hidden" animate="show">
-        <motion.div variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}>
+      <motion.div className="grid gap-4 md:grid-cols-3" variants={staggerContainer}>
+        <motion.div variants={fadeInUp}>
           <StatCard icon={<TrendingUp />} label="Total Income This Month" value={monthlyTotal} />
         </motion.div>
-        <motion.div variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}>
+        <motion.div variants={fadeInUp}>
           <StatCard icon={<CircleDollarSign />} label="Total Income This Year" value={yearlyTotal} />
         </motion.div>
-        <motion.div variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}>
+        <motion.div variants={fadeInUp}>
           <StatCard icon={<CalendarDays />} label="Avg Monthly" value={avgMonthly} />
         </motion.div>
       </motion.div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      {/* Income Trends Chart Card */}
+      <motion.div className="card p-5 hover:border-primary/20 hover:shadow-md transition-all duration-300" variants={fadeInUp}>
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+          <div>
+            <h3 className="font-heading font-semibold">Income Trends</h3>
+            <p className="text-xs text-muted-foreground">Earnings analysis over time</p>
+          </div>
+          <div className="flex rounded-lg bg-muted p-1 text-xs font-medium self-start sm:self-auto select-none">
+            <button
+              onClick={() => setTrendTab("monthly")}
+              className={`rounded-md px-3 py-1.5 transition-all outline-none ${
+                trendTab === "monthly"
+                  ? "bg-background text-foreground shadow-xs font-medium"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Monthly View (Last 12M)
+            </button>
+            <button
+              onClick={() => setTrendTab("yearly")}
+              className={`rounded-md px-3 py-1.5 transition-all outline-none ${
+                trendTab === "yearly"
+                  ? "bg-background text-foreground shadow-xs font-medium"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Yearly View
+            </button>
+          </div>
+        </div>
+        <div className="mt-4">
+          <ChartContainer config={trendConfig} className="h-64 w-full aspect-auto">
+            <BarChart data={trendTab === "monthly" ? monthlyTrendData : yearlyTrendData}>
+              <XAxis dataKey="name" />
+              <YAxis />
+              <ChartTooltip content={<ChartTooltipContent />} />
+              <Bar dataKey="income" fill="var(--income)" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ChartContainer>
+        </div>
+      </motion.div>
+
+      <motion.div className="flex flex-col gap-3 sm:flex-row sm:items-center" variants={fadeInUp}>
         <Select value={month} onValueChange={(value) => setMonth(value ?? String(today.getMonth() + 1))}>
           <SelectTrigger className="w-full sm:w-40">
             <SelectValue>{monthNames[Number(month) - 1]}</SelectValue>
@@ -306,89 +399,93 @@ export default function IncomePage() {
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </motion.div>
 
       {filteredIncome.length === 0 ? (
-        <EmptyState
-          icon={<TrendingUp />}
-          title="No income entries yet"
-          description="Add your first income source to start tracking your cash flow."
-          action={
-            <Button onClick={openCreate}>
-              <Plus />
-              Add your first income
-            </Button>
-          }
-        />
+        <motion.div variants={fadeInUp}>
+          <EmptyState
+            icon={<TrendingUp />}
+            title="No income entries yet"
+            description="Add your first income source to start tracking your cash flow."
+            action={
+              <Button onClick={openCreate} className="hover:scale-[1.02] active:scale-[0.98] transition-all">
+                <Plus />
+                Add your first income
+              </Button>
+            }
+          />
+        </motion.div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[2.2fr_1fr] items-start">
+        <motion.div className="grid gap-6 lg:grid-cols-[2.2fr_1fr] items-start" variants={fadeInUp}>
           <div className="space-y-4">
-            <div className="card hidden overflow-hidden md:block">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Source</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Payment mode</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead className="w-24" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredIncome.map((entry) => (
-                    <TableRow key={entry.id}>
-                      <TableCell>
-                        <div className="font-medium">{entry.source}</div>
-                        {entry.note && (
-                          <div className="mt-0.5 max-w-48 truncate text-xs text-muted-foreground">{entry.note}</div>
-                        )}
-                      </TableCell>
-                      <TableCell>{entry.category ?? "Uncategorized"}</TableCell>
-                      <TableCell>{formatDate(entry.date)}</TableCell>
-                      <TableCell>{entry.paymentMode}</TableCell>
-                      <TableCell className="text-right">
-                        <MoneyText value={entry.amount} variant="positive" />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex justify-end gap-1">
-                          <Tooltip>
-                            <TooltipTrigger
-                              render={
-                                <Button
-                                  variant="ghost"
-                                  size="icon-sm"
-                                  onClick={() => openEdit(entry)}
-                                  aria-label="Edit income"
-                                />
-                              }
-                            >
-                              <Pencil />
-                            </TooltipTrigger>
-                            <TooltipContent>Edit income</TooltipContent>
-                          </Tooltip>
-                          <Tooltip>
-                            <TooltipTrigger
-                              render={
-                                <Button
-                                  variant="ghost"
-                                  size="icon-sm"
-                                  className="text-destructive hover:text-destructive"
-                                  onClick={() => setIncomeToDelete(entry)}
-                                  aria-label="Delete income"
-                                />
-                              }
-                            >
-                              <Trash2 />
-                            </TooltipTrigger>
-                            <TooltipContent>Delete income</TooltipContent>
-                          </Tooltip>
-                        </div>
-                      </TableCell>
+            <div className="card hidden md:block">
+              <div className="overflow-x-auto scrollbar-thin">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Source</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Payment mode</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead className="w-24" />
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredIncome.map((entry) => (
+                      <TableRow key={entry.id} className="hover:bg-muted/30 transition-colors">
+                        <TableCell>
+                          <div className="font-medium">{entry.source}</div>
+                          {entry.note && (
+                            <div className="mt-0.5 max-w-48 truncate text-xs text-muted-foreground">{entry.note}</div>
+                          )}
+                        </TableCell>
+                        <TableCell>{entry.category ?? "Uncategorized"}</TableCell>
+                        <TableCell>{formatDate(entry.date)}</TableCell>
+                        <TableCell>{entry.paymentMode}</TableCell>
+                        <TableCell className="text-right">
+                          <MoneyText value={entry.amount} variant="positive" />
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex justify-end gap-1">
+                            <Tooltip>
+                              <TooltipTrigger
+                                render={
+                                  <Button
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    onClick={() => openEdit(entry)}
+                                    aria-label="Edit income"
+                                  />
+                                }
+                              >
+                                <Pencil />
+                              </TooltipTrigger>
+                              <TooltipContent>Edit income</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger
+                                render={
+                                  <Button
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    className="text-destructive hover:text-destructive"
+                                    onClick={() => setIncomeToDelete(entry)}
+                                    aria-label="Delete income"
+                                  />
+                                }
+                              >
+                                <Trash2 />
+                              </TooltipTrigger>
+                              <TooltipContent>Delete income</TooltipContent>
+                            </Tooltip>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
             <div className="grid gap-3 md:hidden">
               {filteredIncome.map((entry) => (
@@ -467,7 +564,7 @@ export default function IncomePage() {
               </div>
             )}
           </div>
-        </div>
+        </motion.div>
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -623,6 +720,6 @@ export default function IncomePage() {
         onConfirm={deleteIncome}
       />
       <LoaderOverlay show={isMutating} label={editing ? "Saving income..." : "Updating income..."} />
-    </div>
+    </motion.div>
   );
 }

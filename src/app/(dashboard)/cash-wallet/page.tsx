@@ -248,47 +248,49 @@ export default function CashWalletPage() {
       <div>
         <h3 className="font-heading text-lg font-semibold mb-3">Cash Ledger</h3>
         <div className="card overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Source</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead className="text-right">Balance</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {transactions.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>{format(new Date(item.date), "dd MMM yyyy")}</TableCell>
-                  <TableCell className="font-medium">{item.description || "Cash Transaction"}</TableCell>
-                  <TableCell>
-                    <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      {item.source}
-                    </span>
-                  </TableCell>
-                  <TableCell className={item.type === "Credit" ? "text-income font-medium" : "text-expense font-medium"}>
-                    {item.type}
-                  </TableCell>
-                  <TableCell className="text-right font-medium">
-                    <MoneyText value={item.amount} variant={item.type === "Credit" ? "positive" : "negative"} />
-                  </TableCell>
-                  <TableCell className="text-right font-semibold">
-                    <MoneyText value={item.balanceAfter ?? 0} />
-                  </TableCell>
-                </TableRow>
-              ))}
-              {!transactions.length && (
+          <div className="overflow-x-auto scrollbar-thin">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
-                    No cash transactions recorded yet.
-                  </TableCell>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Source</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="text-right">Balance</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {transactions.map((item) => (
+                  <TableRow key={item.id} className="hover:bg-muted/30 transition-colors">
+                    <TableCell>{format(new Date(item.date), "dd MMM yyyy")}</TableCell>
+                    <TableCell className="font-medium">{item.description || "Cash Transaction"}</TableCell>
+                    <TableCell>
+                      <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        {item.source}
+                      </span>
+                    </TableCell>
+                    <TableCell className={item.type === "Credit" ? "text-income font-medium" : "text-expense font-medium"}>
+                      {item.type}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      <MoneyText value={item.amount} variant={item.type === "Credit" ? "positive" : "negative"} />
+                    </TableCell>
+                    <TableCell className="text-right font-semibold">
+                      <MoneyText value={item.balanceAfter ?? 0} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {!transactions.length && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
+                      No cash transactions recorded yet.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </div>
 

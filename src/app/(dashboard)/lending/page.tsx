@@ -14,7 +14,9 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Bar, BarChart, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, Line, LineChart, Cell, Pie, PieChart, XAxis, YAxis } from "recharts";
+import { motion, AnimatePresence } from "framer-motion";
+import { staggerContainer, fadeInUp } from "@/lib/motion";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import EmptyState from "@/components/finance/EmptyState";
@@ -84,6 +86,7 @@ export default function LendingPage() {
   const [entryForm, setEntryForm] = React.useState<EntryForm>(emptyEntry());
   const [repaymentForm, setRepaymentForm] = React.useState<RepaymentForm>(emptyRepayment());
   const [expanded, setExpanded] = React.useState<Set<string>>(new Set());
+  const [lendingTrendTab, setLendingTrendTab] = React.useState<"pending" | "givenVsTaken">("pending");
 
   const searchParams = useSearchParams();
 
@@ -144,6 +147,76 @@ export default function LendingPage() {
   const lendingChartConfig = {
     pending: { label: "Pending Balance", color: tab === "Given" ? "var(--income)" : "var(--expense)" },
   } satisfies ChartConfig;
+
+  // Monthly trends (last 12 months cumulative)
+  const lendingHistoryTrend = React.useMemo(() => {
+    const result = [];
+    const now = new Date();
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const yearKey = d.getFullYear();
+      const monthKey = d.getMonth() + 1;
+      const label = d.toLocaleString("default", { month: "short", year: "2-digit" });
+
+      const totalGiven = lending
+        .filter((entry) => {
+          const entryDate = new Date(entry.date);
+          return entry.type === "Given" && entryDate.getFullYear() <= yearKey && (entryDate.getFullYear() < yearKey || entryDate.getMonth() + 1 <= monthKey);
+        })
+        .reduce((sum, entry) => {
+          const returnedByMonth = (entry.repayments || [])
+            .filter((rep) => {
+              const repDate = new Date(rep.date);
+              return repDate.getFullYear() <= yearKey && (repDate.getFullYear() < yearKey || repDate.getMonth() + 1 <= monthKey);
+            })
+            .reduce((s, rep) => s + rep.amount, 0);
+          return sum + entry.amount - returnedByMonth;
+        }, 0);
+
+      const totalTaken = lending
+        .filter((entry) => {
+          const entryDate = new Date(entry.date);
+          return entry.type === "Taken" && entryDate.getFullYear() <= yearKey && (entryDate.getFullYear() < yearKey || entryDate.getMonth() + 1 <= monthKey);
+        })
+        .reduce((sum, entry) => {
+          const returnedByMonth = (entry.repayments || [])
+            .filter((rep) => {
+              const repDate = new Date(rep.date);
+              return repDate.getFullYear() <= yearKey && (repDate.getFullYear() < yearKey || repDate.getMonth() + 1 <= monthKey);
+            })
+            .reduce((s, rep) => s + rep.amount, 0);
+          return sum + entry.amount - returnedByMonth;
+        }, 0);
+
+      result.push({
+        name: label,
+        "Given (Pending)": totalGiven,
+        "Taken (Pending)": totalTaken,
+      });
+    }
+    return result;
+  }, [lending]);
+
+  const givenVsTakenData = React.useMemo(() => {
+    const givenTotal = lending.filter((e) => e.type === "Given").reduce((sum, e) => sum + e.amount, 0);
+    const givenReturned = lending.filter((e) => e.type === "Given").reduce((sum, e) => sum + e.amountReturned, 0);
+    
+    const takenTotal = lending.filter((e) => e.type === "Taken").reduce((sum, e) => sum + e.amount, 0);
+    const takenReturned = lending.filter((e) => e.type === "Taken").reduce((sum, e) => sum + e.amountReturned, 0);
+
+    return [
+      { name: "Lent (Given)", Total: givenTotal, Returned: givenReturned, Pending: givenTotal - givenReturned },
+      { name: "Borrowed (Taken)", Total: takenTotal, Returned: takenReturned, Pending: takenTotal - takenReturned },
+    ];
+  }, [lending]);
+
+  const lendingTrendConfig = React.useMemo(() => ({
+    "Given (Pending)": { label: "Given (Pending)", color: "var(--income)" },
+    "Taken (Pending)": { label: "Taken (Pending)", color: "var(--expense)" },
+    Total: { label: "Total Amount", color: "var(--primary)" },
+    Returned: { label: "Returned Amount", color: "var(--settled)" },
+    Pending: { label: "Pending Amount", color: "var(--pending)" },
+  }), []);
 
   const setEntry = <K extends keyof EntryForm>(key: K, value: EntryForm[K]) =>
     setEntryForm((current) => ({ ...current, [key]: value }));
@@ -230,35 +303,101 @@ export default function LendingPage() {
   }
   if (isLoading) return <PageSkeleton variant="table" />;
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+    <motion.div
+      className="space-y-6"
+      variants={staggerContainer}
+      initial="hidden"
+      animate="show"
+    >
+      <motion.div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center" variants={fadeInUp}>
         <div>
           <h2 className="font-heading text-2xl font-semibold">Lending</h2>
           <p className="mt-1 text-sm text-muted-foreground">Keep a clear record of money lent and borrowed.</p>
         </div>
-        <Button onClick={openCreate}>
+        <Button onClick={openCreate} className="hover:scale-[1.02] active:scale-[0.98] transition-all">
           <Plus />
           Add Entry
         </Button>
-      </div>
-      <Tabs value={tab} onValueChange={(value) => setTab(value as "Given" | "Taken" | "History")}>
-        <TabsList>
-          <TabsTrigger value="Given">
-            <ArrowUpFromLine />
-            Money I Gave
-          </TabsTrigger>
-          <TabsTrigger value="Taken">
-            <ArrowDownToLine />
-            Money I Owe
-          </TabsTrigger>
-          <TabsTrigger value="History">
-            <RotateCcw />
-            Repayments History
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+      </motion.div>
+      <motion.div variants={fadeInUp}>
+        <Tabs value={tab} onValueChange={(value) => setTab(value as "Given" | "Taken" | "History")}>
+          <TabsList>
+            <TabsTrigger value="Given">
+              <ArrowUpFromLine />
+              Money I Gave
+            </TabsTrigger>
+            <TabsTrigger value="Taken">
+              <ArrowDownToLine />
+              Money I Owe
+            </TabsTrigger>
+            <TabsTrigger value="History">
+              <RotateCcw />
+              Repayments History
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </motion.div>
+
+      {/* Lending & Borrowing Trend Analytics */}
+      {lending.length > 0 && (
+        <motion.div className="card p-5 hover:border-primary/20 hover:shadow-md transition-all duration-300" variants={fadeInUp}>
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+            <div>
+              <h3 className="font-heading font-semibold">Lending & Borrowing Analytics</h3>
+              <p className="text-xs text-muted-foreground">Outstanding balances and history over time</p>
+            </div>
+            <div className="flex rounded-lg bg-muted p-1 text-xs font-medium self-start sm:self-auto select-none">
+              <button
+                onClick={() => setLendingTrendTab("pending")}
+                className={`rounded-md px-3 py-1.5 transition-all outline-none ${
+                  lendingTrendTab === "pending"
+                    ? "bg-background text-foreground shadow-xs font-medium"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Monthly Pending Trend
+              </button>
+              <button
+                onClick={() => setLendingTrendTab("givenVsTaken")}
+                className={`rounded-md px-3 py-1.5 transition-all outline-none ${
+                  lendingTrendTab === "givenVsTaken"
+                    ? "bg-background text-foreground shadow-xs font-medium"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Lent vs Borrowed (Total Status)
+              </button>
+            </div>
+          </div>
+          <div className="mt-4">
+            {lendingTrendTab === "pending" ? (
+              <ChartContainer config={lendingTrendConfig} className="h-64 w-full aspect-auto">
+                <LineChart data={lendingHistoryTrend}>
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Line dataKey="Given (Pending)" stroke="var(--color-Given_(Pending))" strokeWidth={3} dot={false} />
+                  <Line dataKey="Taken (Pending)" stroke="var(--color-Taken_(Pending))" strokeWidth={3} dot={false} />
+                </LineChart>
+              </ChartContainer>
+            ) : (
+              <ChartContainer config={lendingTrendConfig} className="h-64 w-full aspect-auto">
+                <BarChart data={givenVsTakenData}>
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="Total" fill="var(--color-Total)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Returned" fill="var(--color-Returned)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Pending" fill="var(--color-Pending)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ChartContainer>
+            )}
+          </div>
+        </motion.div>
+      )}
+
       {tab !== "History" && (
-        <div className="grid gap-5 lg:grid-cols-[1fr_1.5fr] items-stretch">
+        <motion.div className="grid gap-5 lg:grid-cols-[1fr_1.5fr] items-stretch" variants={fadeInUp}>
           <div className="grid gap-4">
             <StatCard icon={<HandCoins />} label={tab === "Given" ? "Total Given" : "Total Taken"} value={total} />
             <StatCard
@@ -268,7 +407,7 @@ export default function LendingPage() {
             />
           </div>
           {lendingChartData.length > 0 && (
-            <div className="card p-5 flex flex-col justify-between">
+            <div className="card p-5 flex flex-col justify-between hover:border-primary/20 hover:shadow-md transition-all duration-300">
               <div>
                 <h3 className="font-heading text-sm font-semibold">
                   {tab === "Given" ? "Top Borrowers" : "Top Lenders"}
@@ -289,7 +428,7 @@ export default function LendingPage() {
               </ChartContainer>
             </div>
           )}
-        </div>
+        </motion.div>
       )}
       {tab === "History" ? (
         <RepaymentHistoryList repayments={repaymentHistory} bankAccounts={bankAccounts} />
@@ -347,134 +486,142 @@ export default function LendingPage() {
                   <StatusBadge status={status} />
                   <ChevronDown className={`shrink-0 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
                 </button>
-                {isExpanded && (
-                  <div className="border-t border-border px-4 py-2 space-y-3">
-                    <div className="flex justify-end pt-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setEditing(null);
-                          setEntryForm({
-                            person,
-                            type: tab === "Taken" ? "Taken" : "Given",
-                            amount: "",
-                            date: today(),
-                            dueDate: "",
-                            note: "",
-                            bankAccount: "",
-                          });
-                          setEntryOpen(true);
-                        }}
-                      >
-                        <Plus className="mr-1.5 size-4" />
-                        {tab === "Given" ? "Lend More" : "Borrow More"}
-                      </Button>
-                    </div>
-                    {personEntries.map((entry) => (
-                      <div
-                        key={entry.id}
-                        className="flex flex-col gap-3 border-b border-border py-3 last:border-0 sm:flex-row sm:items-center"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-medium">
-                              <MoneyText value={entry.amount} />
-                            </span>
-                            <StatusBadge status={entry.status} />
-                          </div>
-                          <div className="mt-1 text-sm text-muted-foreground">
-                            {format(new Date(entry.date), "dd MMM yyyy")}
-                            {entry.dueDate ? ` · Due ${format(new Date(entry.dueDate), "dd MMM yyyy")}` : ""}
-                            {entry.note ? ` · ${entry.note}` : ""}
-                          </div>
-                          {/* Repayments log */}
-                          {entry.repayments && entry.repayments.length > 0 && (
-                            <div className="mt-3 pl-3 border-l-2 border-primary/20 space-y-1">
-                              <div className="text-xs font-semibold text-muted-foreground">Repayments:</div>
-                              {entry.repayments.map((rep) => {
-                                const account = rep.bankAccount
-                                  ? bankAccounts.find((a) => a.id === rep.bankAccount)
-                                  : null;
-                                return (
-                                  <div
-                                    key={rep.id}
-                                    className="text-xs text-muted-foreground flex items-center justify-between gap-4 max-w-[280px]"
-                                  >
-                                    <span>
-                                      {format(new Date(rep.date), "dd MMM yyyy")}
-                                      {account ? ` (${account.name})` : ""}
-                                    </span>
-                                    <span className="font-medium text-foreground">
-                                      <MoneyText value={rep.amount} />
-                                    </span>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                        <div className="grid grid-cols-2 gap-x-5 text-sm sm:block sm:text-right">
-                          <span className="text-muted-foreground sm:block">Returned</span>
-                          <MoneyText value={entry.amountReturned} />
-                          <span className="text-muted-foreground sm:mt-1 sm:block">Pending</span>
-                          <MoneyText value={entry.amount - entry.amountReturned} />
-                        </div>
-                        <div className="flex gap-1">
-                          <Tooltip>
-                            <TooltipTrigger
-                              render={
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  disabled={entry.status === "Settled"}
-                                  onClick={() => openRepayment(entry)}
-                                />
-                              }
-                            >
-                              <RotateCcw />
-                              {entry.type === "Given" ? "Record Return" : "Pay Back"}
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              {entry.type === "Given" ? "Record money returned to you" : "Record repayment to lender"}
-                            </TooltipContent>
-                          </Tooltip>
-                          <Tooltip>
-                            <TooltipTrigger
-                              render={
-                                <Button
-                                  size="icon-sm"
-                                  variant="ghost"
-                                  onClick={() => openEdit(entry)}
-                                  aria-label="Edit entry"
-                                />
-                              }
-                            >
-                              <Pencil />
-                            </TooltipTrigger>
-                            <TooltipContent>Edit entry</TooltipContent>
-                          </Tooltip>
-                          <Tooltip>
-                            <TooltipTrigger
-                              render={
-                                <Button
-                                  size="icon-sm"
-                                  variant="ghost"
-                                  className="text-destructive hover:text-destructive"
-                                  onClick={() => setEntryToDelete(entry)}
-                                  aria-label="Delete entry"
-                                />
-                              }
-                            >
-                              <Trash2 />
-                            </TooltipTrigger>
-                            <TooltipContent>Delete entry</TooltipContent>
-                          </Tooltip>
-                        </div>
+                <AnimatePresence initial={false}>
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.25, ease: "easeInOut" }}
+                      className="overflow-hidden border-t border-border px-4 py-2 space-y-3"
+                    >
+                      <div className="flex justify-end pt-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setEditing(null);
+                            setEntryForm({
+                              person,
+                              type: tab === "Taken" ? "Taken" : "Given",
+                              amount: "",
+                              date: today(),
+                              dueDate: "",
+                              note: "",
+                              bankAccount: "",
+                            });
+                            setEntryOpen(true);
+                          }}
+                        >
+                          <Plus className="mr-1.5 size-4" />
+                          {tab === "Given" ? "Lend More" : "Borrow More"}
+                        </Button>
                       </div>
-                    ))}
-                  </div>
-                )}
+                      {personEntries.map((entry) => (
+                        <div
+                          key={entry.id}
+                          className="flex flex-col gap-3 border-b border-border py-3 last:border-0 sm:flex-row sm:items-center"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-medium">
+                                <MoneyText value={entry.amount} />
+                              </span>
+                              <StatusBadge status={entry.status} />
+                            </div>
+                            <div className="mt-1 text-sm text-muted-foreground">
+                              {format(new Date(entry.date), "dd MMM yyyy")}
+                              {entry.dueDate ? ` · Due ${format(new Date(entry.dueDate), "dd MMM yyyy")}` : ""}
+                              {entry.note ? ` · ${entry.note}` : ""}
+                            </div>
+                            {/* Repayments log */}
+                            {entry.repayments && entry.repayments.length > 0 && (
+                              <div className="mt-3 pl-3 border-l-2 border-primary/20 space-y-1">
+                                <div className="text-xs font-semibold text-muted-foreground">Repayments:</div>
+                                {entry.repayments.map((rep) => {
+                                  const account = rep.bankAccount
+                                    ? bankAccounts.find((a) => a.id === rep.bankAccount)
+                                    : null;
+                                  return (
+                                    <div
+                                      key={rep.id}
+                                      className="text-xs text-muted-foreground flex items-center justify-between gap-4 max-w-[280px]"
+                                    >
+                                      <span>
+                                        {format(new Date(rep.date), "dd MMM yyyy")}
+                                        {account ? ` (${account.name})` : ""}
+                                      </span>
+                                      <span className="font-medium text-foreground">
+                                        <MoneyText value={rep.amount} />
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-2 gap-x-5 text-sm sm:block sm:text-right">
+                            <span className="text-muted-foreground sm:block">Returned</span>
+                            <MoneyText value={entry.amountReturned} />
+                            <span className="text-muted-foreground sm:mt-1 sm:block">Pending</span>
+                            <MoneyText value={entry.amount - entry.amountReturned} />
+                          </div>
+                          <div className="flex gap-1">
+                            <Tooltip>
+                              <TooltipTrigger
+                                render={
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={entry.status === "Settled"}
+                                    onClick={() => openRepayment(entry)}
+                                  />
+                                }
+                              >
+                                <RotateCcw />
+                                {entry.type === "Given" ? "Record Return" : "Pay Back"}
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {entry.type === "Given" ? "Record money returned to you" : "Record repayment to lender"}
+                              </TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger
+                                render={
+                                  <Button
+                                    size="icon-sm"
+                                    variant="ghost"
+                                    onClick={() => openEdit(entry)}
+                                    aria-label="Edit entry"
+                                  />
+                                }
+                              >
+                                <Pencil />
+                              </TooltipTrigger>
+                              <TooltipContent>Edit entry</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger
+                                render={
+                                  <Button
+                                    size="icon-sm"
+                                    variant="ghost"
+                                    className="text-destructive hover:text-destructive"
+                                    onClick={() => setEntryToDelete(entry)}
+                                    aria-label="Delete entry"
+                                  />
+                                }
+                              >
+                                <Trash2 />
+                              </TooltipTrigger>
+                              <TooltipContent>Delete entry</TooltipContent>
+                            </Tooltip>
+                          </div>
+                        </div>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </section>
             );
           })}
@@ -663,7 +810,7 @@ export default function LendingPage() {
         onConfirm={deleteEntry}
       />
       <LoaderOverlay show={isMutating} label="Updating lending records..." />
-    </div>
+    </motion.div>
   );
 }
 

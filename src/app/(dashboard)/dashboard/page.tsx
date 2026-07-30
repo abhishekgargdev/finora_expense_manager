@@ -1,6 +1,8 @@
 "use client";
 import * as React from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
+import { staggerContainer, fadeInUp, scaleIn } from "@/lib/motion";
 import { Cell, Bar, BarChart, Line, LineChart, Pie, PieChart, XAxis, YAxis } from "recharts";
 import {
   ArrowDownRight,
@@ -81,8 +83,13 @@ export default function DashboardPage() {
     [<CreditCard />, "Credit Card Outstanding", data.creditOutstanding],
   ] as const;
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+    <motion.div
+      className="space-y-6"
+      variants={staggerContainer}
+      initial="hidden"
+      animate="show"
+    >
+      <motion.div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end" variants={fadeInUp}>
         <div>
           <h2 className="font-heading text-2xl font-semibold">Financial overview</h2>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -90,7 +97,7 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={() => setQuickAddOpen(true)}>
+          <Button onClick={() => setQuickAddOpen(true)} className="hover:scale-[1.02] active:scale-[0.98] transition-all">
             <Plus className="size-4" />
             Quick Add
           </Button>
@@ -124,43 +131,46 @@ export default function DashboardPage() {
             </SelectContent>
           </Select>
         </div>
-      </div>
-      <div className="card p-4">
+      </motion.div>
+
+      <motion.div className="card p-4 hover:border-primary/20 hover:shadow-md transition-all duration-300" variants={fadeInUp}>
         <h3 className="font-heading text-sm font-semibold mb-3">Quick Actions</h3>
         <div className="flex flex-wrap gap-3">
           <Link
             href="/expenses?add=true"
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-expense-10 text-expense border border-expense/25 hover:bg-expense/10 rounded-lg text-sm font-medium transition-colors"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-expense-10 text-expense border border-expense/25 hover:bg-expense/10 rounded-lg text-sm font-medium hover:scale-[1.02] active:scale-[0.98] transition-all"
           >
             <Plus className="size-4" /> Add Expense
           </Link>
           <Link
             href="/income?add=true"
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-income-10 text-income border border-income/25 hover:bg-income/10 rounded-lg text-sm font-medium transition-colors"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-income-10 text-income border border-income/25 hover:bg-income/10 rounded-lg text-sm font-medium hover:scale-[1.02] active:scale-[0.98] transition-all"
           >
             <Plus className="size-4" /> Add Income
           </Link>
           <Link
             href="/investments?add=true"
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-investment-10 text-investment border border-investment/25 hover:bg-investment/10 rounded-lg text-sm font-medium transition-colors"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-investment-10 text-investment border border-investment/25 hover:bg-investment/10 rounded-lg text-sm font-medium hover:scale-[1.02] active:scale-[0.98] transition-all"
           >
             <Plus className="size-4" /> Add Investment
           </Link>
           <Link
             href="/lending?add=true"
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-pending-10 text-pending border border-pending/25 hover:bg-pending/10 rounded-lg text-sm font-medium transition-colors"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-pending-10 text-pending border border-pending/25 hover:bg-pending/10 rounded-lg text-sm font-medium hover:scale-[1.02] active:scale-[0.98] transition-all"
           >
             <Plus className="size-4" /> Add Lending
           </Link>
         </div>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      </motion.div>
+
+      <motion.div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" variants={staggerContainer}>
         {cards.map(([icon, label, value]) => (
           <StatCard key={label} icon={icon} label={label} value={value} />
         ))}
-      </div>
-      <div className="grid gap-5 lg:grid-cols-[1.55fr_1fr]">
-        <section className="card p-5">
+      </motion.div>
+
+      <motion.div className="grid gap-5 lg:grid-cols-[1.55fr_1fr]" variants={fadeInUp}>
+        <section className="card p-5 hover:border-primary/20 hover:shadow-md transition-all duration-300">
           <h3 className="font-heading font-semibold">Income vs Expense</h3>
           <p className="text-sm text-muted-foreground">Last 12 months</p>
           <ChartContainer config={config} className="mt-4 h-72 w-full aspect-auto">
@@ -173,7 +183,7 @@ export default function DashboardPage() {
             </LineChart>
           </ChartContainer>
         </section>
-        <section className="card p-5">
+        <section className="card p-5 hover:border-primary/20 hover:shadow-md transition-all duration-300">
           <h3 className="font-heading font-semibold">Expense by category</h3>
           <ChartContainer config={config} className="mt-4 h-72 w-full aspect-auto">
             <PieChart>
@@ -186,9 +196,10 @@ export default function DashboardPage() {
             </PieChart>
           </ChartContainer>
         </section>
-      </div>
-      <div className="grid gap-5 lg:grid-cols-3">
-        <section className="card p-5 lg:col-span-2">
+      </motion.div>
+
+      <motion.div className="grid gap-5 lg:grid-cols-3" variants={fadeInUp}>
+        <section className="card p-5 lg:col-span-2 hover:border-primary/20 hover:shadow-md transition-all duration-300">
           <h3 className="font-heading font-semibold">Investment distribution</h3>
           <ChartContainer config={config} className="mt-4 h-64 w-full aspect-auto">
             <BarChart data={distribution}>
@@ -199,7 +210,7 @@ export default function DashboardPage() {
             </BarChart>
           </ChartContainer>
         </section>
-        <section className="card p-5 flex flex-col justify-between">
+        <section className="card p-5 flex flex-col justify-between hover:border-primary/20 hover:shadow-md transition-all duration-300">
           <div>
             <h3 className="font-heading font-semibold">Bank balances</h3>
             <p className="text-xs text-muted-foreground">Liquid asset distribution</p>
@@ -209,7 +220,7 @@ export default function DashboardPage() {
               {data.accounts.map((account: any) => (
                 <div
                   key={account.id}
-                  className="rounded-xl p-2.5 text-white transition-all hover:scale-[1.02]"
+                  className="rounded-xl p-2.5 text-white transition-all hover:scale-[1.02] cursor-pointer hover:shadow-md"
                   style={{ background: `linear-gradient(135deg, ${account.themeColor || "#1e3a5f"}, #111827)` }}
                 >
                   <div className="text-[10px] text-white/70">
@@ -221,7 +232,7 @@ export default function DashboardPage() {
               ))}
               {data.cashBalance > 0 && (
                 <div
-                  className="rounded-xl p-2.5 text-white transition-all hover:scale-[1.02]"
+                  className="rounded-xl p-2.5 text-white transition-all hover:scale-[1.02] cursor-pointer hover:shadow-md"
                   style={{ background: "linear-gradient(135deg, #0f766e, #111827)" }}
                 >
                   <div className="text-[10px] text-white/70">Physical Wallet</div>
@@ -244,15 +255,16 @@ export default function DashboardPage() {
             </div>
           </div>
         </section>
-      </div>
-      <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+      </motion.div>
+
+      <motion.div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3" variants={fadeInUp}>
         <People title="People who owe me" items={data.lending.owedToMe} />
         <People title="People I owe" items={data.lending.iOwe} />
-        <section className="card p-5">
+        <section className="card p-5 hover:border-primary/20 hover:shadow-md transition-all duration-300">
           <h3 className="font-heading font-semibold">Recent transactions</h3>
           <div className="mt-3 space-y-3">
             {data.recent.map((item: any, index: number) => (
-              <div key={index} className="flex items-center gap-3">
+              <div key={index} className="flex items-center gap-3 hover:bg-muted/50 p-1.5 rounded-lg transition-colors cursor-pointer">
                 <span
                   className={`flex size-8 items-center justify-center rounded-full ${item.type === "Income" ? "bg-income-10 text-income" : item.type === "Expense" ? "bg-expense-10 text-expense" : "bg-primary/10 text-primary"}`}
                 >
@@ -267,13 +279,13 @@ export default function DashboardPage() {
             ))}
           </div>
         </section>
-      </div>
+      </motion.div>
       <QuickAddDialog
         open={quickAddOpen}
         onOpenChange={setQuickAddOpen}
         onSuccess={() => setRefreshTrigger((prev) => prev + 1)}
       />
-    </div>
+    </motion.div>
   );
 }
 function People({ title, items }: { title: string; items: { person: string; pending: number }[] }) {
