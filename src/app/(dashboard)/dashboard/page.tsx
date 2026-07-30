@@ -42,10 +42,8 @@ export default function DashboardPage() {
       if (response.ok) setData(await response.json());
     })();
   }, [month, year, refreshTrigger]);
-  if (!data) return <PageSkeleton variant="chart" />;
-  const distribution = Object.entries(data.investments.distribution).map(([name, value]) => ({ name, value }));
-
   const liquidAssetsData = React.useMemo(() => {
+    if (!data) return [];
     const list = data.accounts.map((acc: any) => ({
       name: acc.name || acc.bankName,
       value: acc.currentBalance,
@@ -68,6 +66,9 @@ export default function DashboardPage() {
     });
     return cfg;
   }, [liquidAssetsData]);
+
+  if (!data) return <PageSkeleton variant="chart" />;
+  const distribution = Object.entries(data.investments.distribution).map(([name, value]) => ({ name, value }));
 
   const cards = [
     [<Landmark />, "Total Bank Balance", data.bankBalance],
