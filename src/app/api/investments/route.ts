@@ -118,10 +118,10 @@ export async function POST(request: NextRequest) {
 
       if (parsed.investmentMode === "Lumpsum") {
         parsed.amountInvested = Number(parsed.principalAmount);
-        parsed.currentValue = Number(parsed.principalAmount);
+        parsed.currentValue = parsed.currentValue !== undefined ? Number(parsed.currentValue) : Number(parsed.principalAmount);
       } else {
-        parsed.amountInvested = 0;
-        parsed.currentValue = 0;
+        parsed.amountInvested = parsed.amountInvested !== undefined ? Number(parsed.amountInvested) : 0;
+        parsed.currentValue = parsed.currentValue !== undefined ? Number(parsed.currentValue) : 0;
       }
     } else {
       if (parsed.amountInvested === undefined) {

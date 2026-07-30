@@ -290,11 +290,16 @@ export default function QuickAddDialog({ open, onOpenChange, onSuccess }: Props)
             interestRate: rate,
             compoundingFrequency,
             startDate: isoDate,
+            date: isoDate,
             tenureValue: tenureVal,
             tenureUnit,
             bankAccount: (investmentMode === "Lumpsum" && bankAccount && bankAccount !== "none") ? bankAccount : undefined,
             note: note.trim() || undefined,
           };
+
+          if (currentValue) {
+            payload.currentValue = Number(currentValue);
+          }
 
           if (investmentMode === "Lumpsum") {
             payload.principalAmount = numAmount;
@@ -836,6 +841,18 @@ export default function QuickAddDialog({ open, onOpenChange, onSuccess }: Props)
                         value={tenureValue}
                         onChange={(e) => setTenureValue(e.target.value)}
                         required
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="fixed-current-value">Current Value <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                      <Input
+                        id="fixed-current-value"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={currentValue}
+                        onChange={(e) => setCurrentValue(e.target.value)}
+                        placeholder={investmentMode === "Lumpsum" ? "Defaults to principal" : "Defaults to 0"}
                       />
                     </div>
                   </div>

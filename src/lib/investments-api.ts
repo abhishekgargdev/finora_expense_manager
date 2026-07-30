@@ -39,7 +39,9 @@ export function parseInvestment(input: InvestmentInput, partial = false) {
   if (input.note !== undefined || !partial) values.note = text(input.note) || undefined;
 
   if (!partial || input.date !== undefined) {
-    const date = new Date(text(input.date));
+    const isFixedTenure = category === "Fixed-Tenure";
+    const dateStr = text(input.date) || (isFixedTenure ? text(input.startDate) : "");
+    const date = new Date(dateStr);
     if (Number.isNaN(date.getTime())) throw new Error("A valid date is required.");
     values.date = date;
   }

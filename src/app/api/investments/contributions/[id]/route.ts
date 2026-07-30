@@ -19,6 +19,9 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       return NextResponse.json({ error: "Contribution installment not found." }, { status: 404 });
     }
 
+    const oldStatus = contribution.status;
+    const oldAmount = contribution.amount;
+
     const investment = await InvestmentModel.findOne({ _id: contribution.investment, user: userId });
     if (!investment) {
       return NextResponse.json({ error: "Associated investment not found." }, { status: 404 });
@@ -104,7 +107,15 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     const totalPaid = paidContributions.reduce((sum, c) => sum + c.amount, 0);
     investment.amountInvested = totalPaid;
     if (investment.status === "Active") {
-      investment.currentValue = totalPaid;
+      let currentValueAdjustment = 0;
+      if (oldStatus === "Paid" && newStatus !== "Paid") {
+        currentValueAdjustment = -oldAmount;
+      } else if (oldStatus !== "Paid" && newStatus === "Paid") {
+        currentValueAdjustment = newAmount;
+      } else if (oldStatus === "Paid" && newStatus === "Paid") {
+        currentValueAdjustment = newAmount - oldAmount;
+      }
+      investment.currentValue = Math.max(0, (investment.currentValue || 0) + currentValueAdjustment);
     }
     await investment.save();
 

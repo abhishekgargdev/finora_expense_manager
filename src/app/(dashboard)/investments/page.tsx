@@ -306,9 +306,14 @@ export default function InvestmentsPage() {
       payload.interestRate = rate;
       payload.compoundingFrequency = form.compoundingFrequency;
       payload.startDate = new Date(`${form.startDate}T12:00:00`).toISOString();
+      payload.date = new Date(`${form.startDate}T12:00:00`).toISOString();
       payload.tenureValue = tenureValue;
       payload.tenureUnit = form.tenureUnit;
       payload.bankAccount = form.bankAccount || undefined;
+
+      if (form.currentValue) {
+        payload.currentValue = Number(form.currentValue);
+      }
 
       if (form.investmentMode === "Lumpsum") {
         const principal = Number(form.principalAmount);
@@ -1221,6 +1226,23 @@ export default function InvestmentsPage() {
                   </div>
                 </div>
 
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-2">
+                    <Label htmlFor="fixed-current-value">
+                      Current Value <span className="font-normal text-muted-foreground">(optional)</span>
+                    </Label>
+                    <Input
+                      id="fixed-current-value"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.currentValue}
+                      onChange={(event) => change("currentValue", event.target.value)}
+                      placeholder={form.investmentMode === "Lumpsum" ? "Defaults to principal" : "Defaults to 0"}
+                    />
+                  </div>
+                </div>
+
                 {/* Overrides and custom overrides */}
                 <div className="grid gap-4 sm:grid-cols-2 border-t pt-3 mt-1">
                   <div className="grid gap-2">
@@ -1604,6 +1626,18 @@ function FixedTenureCard({
           </span>
           <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">
             <MoneyText value={maturityAmount || 0} />
+          </span>
+        </div>
+        <div>
+          <span className="text-muted-foreground block text-[10px] uppercase font-medium">Total Invested</span>
+          <span className="font-semibold text-foreground text-sm">
+            <MoneyText value={item.amountInvested || 0} />
+          </span>
+        </div>
+        <div>
+          <span className="text-muted-foreground block text-[10px] uppercase font-medium">Current Value</span>
+          <span className="font-bold text-primary text-sm">
+            <MoneyText value={item.currentValue || 0} />
           </span>
         </div>
       </div>
