@@ -8,6 +8,7 @@ export type BankAccount = {
   last4Digits?: string;
   currentBalance: number;
   openingBalance: number;
+  minimumBalance: number;
   themeColor?: string;
 };
 export type BankTransaction = {

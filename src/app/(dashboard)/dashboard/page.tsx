@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { staggerContainer, fadeInUp, scaleIn } from "@/lib/motion";
 import { Cell, Bar, BarChart, Line, LineChart, Pie, PieChart, XAxis, YAxis } from "recharts";
 import {
+  AlertTriangle,
   ArrowDownRight,
   ArrowUpRight,
   Banknote,
@@ -75,6 +76,9 @@ export default function DashboardPage() {
 
   if (!data) return <PageSkeleton variant="chart" />;
   const distribution = Object.entries(data.investments.distribution).map(([name, value]) => ({ name, value }));
+  const lowBalanceAccounts = data.accounts.filter(
+    (acc: any) => acc.minimumBalance !== undefined && acc.currentBalance < acc.minimumBalance
+  );
 
   const cards = [
     [<Landmark />, "Total Bank Balance", data.bankBalance],
@@ -136,6 +140,37 @@ export default function DashboardPage() {
           </Select>
         </div>
       </motion.div>
+
+      {lowBalanceAccounts.length > 0 && (
+        <motion.div
+          className="bg-destructive/10 border border-destructive/25 text-destructive rounded-xl p-4 flex gap-3 items-start"
+          variants={fadeInUp}
+        >
+          <span className="flex p-2 bg-destructive/15 text-destructive rounded-lg shrink-0 animate-pulse">
+            <AlertTriangle className="size-5" />
+          </span>
+          <div className="flex-1 min-w-0">
+            <h4 className="font-heading text-sm font-semibold text-destructive">Low Balance Alert</h4>
+            <p className="text-xs mt-0.5 text-muted-foreground">
+              The following account{lowBalanceAccounts.length > 1 ? "s are" : " is"} below the set minimum limit:
+            </p>
+            <ul className="mt-2 space-y-1 text-xs font-semibold">
+              {lowBalanceAccounts.map((acc: any) => (
+                <li key={acc.id} className="flex flex-wrap items-center gap-1.5 text-foreground/90">
+                  <span className="text-destructive">•</span>
+                  <span>{acc.name}:</span>
+                  <span className="text-destructive font-bold">
+                    <MoneyText value={acc.currentBalance} />
+                  </span>
+                  <span className="text-muted-foreground font-normal text-[10px]">
+                    (Minimum limit: <MoneyText value={acc.minimumBalance} />)
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </motion.div>
+      )}
 
       <motion.div className="card p-4 hover:border-primary/20 hover:shadow-md transition-all duration-300" variants={fadeInUp}>
         <h3 className="font-heading text-sm font-semibold mb-3">Quick Actions</h3>

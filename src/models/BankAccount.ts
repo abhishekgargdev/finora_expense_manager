@@ -11,6 +11,7 @@ export interface IBankAccount {
   last4Digits?: string;
   currentBalance: number;
   openingBalance?: number;
+  minimumBalance?: number;
   themeColor?: string;
   createdAt?: Date;
   updatedAt?: Date;
@@ -27,6 +28,7 @@ const bankAccountSchema = new Schema<BankAccountDocument>(
     last4Digits: { type: String },
     currentBalance: { type: Number, required: true, default: 0 },
     openingBalance: { type: Number, default: 0 },
+    minimumBalance: { type: Number, default: 0 },
     themeColor: { type: String },
   },
   { timestamps: true }

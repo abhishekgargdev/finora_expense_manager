@@ -342,6 +342,7 @@ export async function GET(request: NextRequest) {
         last4Digits: account.last4Digits,
         currentBalance: account.currentBalance,
         themeColor: account.themeColor,
+        minimumBalance: account.minimumBalance ?? 0,
       })),
       expenseCategories: category,
       trend: [...monthlyTrendMap.values()],

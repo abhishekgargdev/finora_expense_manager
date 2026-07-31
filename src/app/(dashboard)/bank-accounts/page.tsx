@@ -2,6 +2,7 @@
 import * as React from "react";
 import { format } from "date-fns";
 import {
+  AlertTriangle,
   ArrowDownRight,
   ArrowRightLeft,
   ArrowUpRight,
@@ -52,10 +53,14 @@ const emptyAccount = (): BankAccountInput & { currentBalance?: number } => ({
   last4Digits: "",
   openingBalance: 0,
   currentBalance: 0,
+  minimumBalance: 0,
   themeColor: COLORS[0],
 });
 export default function BankAccountsPage() {
   const { accounts, isLoading, isMutating, create, update, remove, transaction, transfer } = useBankAccounts();
+  const lowBalanceAccounts = React.useMemo(() => {
+    return accounts.filter((acc) => acc.minimumBalance !== undefined && acc.currentBalance < acc.minimumBalance);
+  }, [accounts]);
   const [selected, setSelected] = React.useState<BankAccount | null>(null);
   const [ledger, setLedger] = React.useState<BankTransaction[]>([]);
   const [accountOpen, setAccountOpen] = React.useState(false);
@@ -175,6 +180,7 @@ export default function BankAccountsPage() {
       last4Digits: account.last4Digits || "",
       openingBalance: account.openingBalance,
       currentBalance: account.currentBalance,
+      minimumBalance: account.minimumBalance,
       themeColor: account.themeColor || COLORS[0],
     });
     setAccountOpen(true);
@@ -190,6 +196,7 @@ export default function BankAccountsPage() {
           last4Digits: accountForm.last4Digits,
           themeColor: accountForm.themeColor,
           currentBalance: accountForm.currentBalance,
+          minimumBalance: accountForm.minimumBalance,
         });
         toast.success("Bank account updated.");
         if (selected && selected.id === editingAccount.id) {
@@ -246,6 +253,17 @@ export default function BankAccountsPage() {
           <ChevronLeft />
           All accounts
         </Button>
+        {selected.currentBalance < selected.minimumBalance && (
+          <div className="bg-destructive/10 border border-destructive/25 text-destructive rounded-xl p-4 flex gap-3 items-center">
+            <AlertTriangle className="size-5 text-destructive shrink-0 animate-bounce" />
+            <div className="flex-1 min-w-0">
+              <h4 className="font-heading text-sm font-semibold text-destructive">Account Balance Below Minimum Limit</h4>
+              <p className="text-xs text-muted-foreground">
+                Current balance is <span className="font-bold text-destructive"><MoneyText value={selected.currentBalance} /></span>, which is below the minimum limit of <span className="font-semibold"><MoneyText value={selected.minimumBalance} /></span>.
+              </p>
+            </div>
+          </div>
+        )}
         <div className="flex flex-col gap-5 lg:flex-row lg:items-stretch">
           <AccountVisual account={selected} className="w-full max-w-md shrink-0" />
           <div className="min-w-0 flex-1 flex flex-col justify-between">
@@ -357,6 +375,34 @@ export default function BankAccountsPage() {
           </Button>
         </div>
       </div>
+
+      {lowBalanceAccounts.length > 0 && (
+        <div className="bg-destructive/10 border border-destructive/25 text-destructive rounded-xl p-4 flex gap-3 items-start animate-in fade-in slide-in-from-top-4 duration-300">
+          <span className="flex p-2 bg-destructive/15 text-destructive rounded-lg shrink-0 animate-pulse">
+            <AlertTriangle className="size-5" />
+          </span>
+          <div className="flex-1 min-w-0">
+            <h4 className="font-heading text-sm font-semibold text-destructive">Low Balance Alert</h4>
+            <p className="text-xs mt-0.5 text-muted-foreground">
+              The following account{lowBalanceAccounts.length > 1 ? "s are" : " is"} below the set minimum limit:
+            </p>
+            <ul className="mt-2 space-y-1 text-xs font-semibold">
+              {lowBalanceAccounts.map((acc) => (
+                <li key={acc.id} className="flex flex-wrap items-center gap-1.5 text-foreground/90">
+                  <span className="text-destructive">•</span>
+                  <span>{acc.accountName ? `${acc.bankName} (${acc.accountName})` : acc.bankName}:</span>
+                  <span className="text-destructive font-bold">
+                    <MoneyText value={acc.currentBalance} />
+                  </span>
+                  <span className="text-muted-foreground font-normal text-[10px]">
+                    (Minimum limit: <MoneyText value={acc.minimumBalance} />)
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
       <div className="grid gap-5 lg:grid-cols-[1fr_1.5fr] items-stretch">
         <div className="grid gap-4 max-w-sm">
           <StatCard icon={<Landmark />} label="Total Balance" value={total} />
@@ -475,7 +521,14 @@ function AccountVisual({ account, className = "" }: { account: BankAccount; clas
       <div className="relative flex h-full flex-col">
         <div className="flex items-start justify-between">
           <Building2 />
-          <span className="rounded-full bg-white/15 px-2 py-1 text-xs">{account.accountType}</span>
+          <div className="flex gap-1.5 items-center">
+            {account.currentBalance < account.minimumBalance && (
+              <span className="rounded-full bg-destructive text-white px-2 py-1 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 animate-pulse shadow-md">
+                <AlertTriangle className="size-3 animate-bounce" /> Low
+              </span>
+            )}
+            <span className="rounded-full bg-white/15 px-2 py-1 text-xs">{account.accountType}</span>
+          </div>
         </div>
         <div className="mt-auto">
           <p className="text-sm text-white/70">Current balance</p>
@@ -588,19 +641,29 @@ function AccountDialog({
               </div>
             )}
             <div className="grid gap-2">
-              <Label>Theme color</Label>
-              <div className="flex gap-2">
-                {COLORS.map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    className={`size-8 rounded-full ring-offset-2 ${form.themeColor === color ? "ring-2 ring-primary" : ""}`}
-                    style={{ backgroundColor: color }}
-                    onClick={() => change("themeColor", color)}
-                    aria-label={`Select ${color}`}
-                  />
-                ))}
-              </div>
+              <Label>Minimum limit</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={form.minimumBalance ?? ""}
+                onChange={(event) => change("minimumBalance", Number(event.target.value))}
+                placeholder="0.00"
+              />
+            </div>
+          </div>
+          <div className="grid gap-2">
+            <Label>Theme color</Label>
+            <div className="flex gap-2">
+              {COLORS.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  className={`size-8 rounded-full ring-offset-2 ${form.themeColor === color ? "ring-2 ring-primary" : ""}`}
+                  style={{ backgroundColor: color }}
+                  onClick={() => change("themeColor", color)}
+                  aria-label={`Select ${color}`}
+                />
+              ))}
             </div>
           </div>
           <DialogFooter>

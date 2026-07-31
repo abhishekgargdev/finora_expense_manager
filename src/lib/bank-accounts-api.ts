@@ -7,6 +7,7 @@ type Input = {
   accountType?: unknown;
   last4Digits?: unknown;
   openingBalance?: unknown;
+  minimumBalance?: unknown;
   themeColor?: unknown;
 };
 export type AccountRecord = {
@@ -17,6 +18,7 @@ export type AccountRecord = {
   last4Digits?: string;
   currentBalance: number;
   openingBalance: number;
+  minimumBalance: number;
   themeColor?: string;
 };
 const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
@@ -38,6 +40,12 @@ export function parseAccount(input: Input, partial = false) {
     if (!Number.isFinite(openingBalance)) throw new Error("Opening balance must be valid.");
     values.openingBalance = openingBalance;
   }
+  if (!partial || input.minimumBalance !== undefined) {
+    const minimumBalance = Number(input.minimumBalance ?? 0);
+    if (!Number.isFinite(minimumBalance) || minimumBalance < 0)
+      throw new Error("Minimum limit must be a valid non-negative number.");
+    values.minimumBalance = minimumBalance;
+  }
   if (input.accountName !== undefined || !partial) values.accountName = text(input.accountName) || undefined;
   if (input.last4Digits !== undefined || !partial) {
     const last4Digits = text(input.last4Digits);
@@ -55,6 +63,7 @@ export const serializeAccount = (item: {
   last4Digits?: string;
   currentBalance: number;
   openingBalance?: number;
+  minimumBalance?: number;
   themeColor?: string;
 }): AccountRecord => ({
   id: item._id.toString(),
@@ -64,6 +73,7 @@ export const serializeAccount = (item: {
   last4Digits: item.last4Digits,
   currentBalance: item.currentBalance,
   openingBalance: item.openingBalance ?? 0,
+  minimumBalance: item.minimumBalance ?? 0,
   themeColor: item.themeColor,
 });
 export async function getUserId() {
