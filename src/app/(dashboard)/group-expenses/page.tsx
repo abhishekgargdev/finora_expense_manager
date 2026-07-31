@@ -21,6 +21,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } f
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import EmptyState from "@/components/finance/EmptyState";
 import MoneyText from "@/components/finance/MoneyText";
+import PaymentSourceSelect from "@/components/finance/PaymentSourceSelect";
 import StatCard from "@/components/finance/StatCard";
 import LoaderOverlay from "@/components/loader/LoaderOverlay";
 import PageSkeleton from "@/components/loader/PageSkeleton";
@@ -38,6 +39,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useGroups, type Group, type GroupDetail } from "@/hooks/useGroups";
+import {
+  parsePaymentSource,
+  paymentModeNeedsSource,
+  resolvePaymentModeFromSource,
+  type PaymentSourceValue,
+} from "@/lib/payment-source";
 
 const today = () => format(new Date(), "yyyy-MM-dd");
 
@@ -78,8 +85,7 @@ export default function GroupExpensesPage() {
     splitType: "Equally" as "Equally" | "Custom",
     customSplits: {} as Record<string, string>,
     paymentMode: "UPI",
-    bankAccountId: "",
-    creditCardId: "",
+    paymentSource: "" as PaymentSourceValue,
   });
 
   // Settle Up Form
@@ -113,8 +119,7 @@ export default function GroupExpensesPage() {
         splitType: "Equally",
         customSplits: {},
         paymentMode: "UPI",
-        bankAccountId: "",
-        creditCardId: "",
+        paymentSource: "",
       });
     }
   }, [expenseOpen]);
@@ -248,6 +253,13 @@ export default function GroupExpensesPage() {
     }
 
     try {
+      const isUserPayer = expenseForm.paidBy.toLowerCase() === "you";
+      const needsSource = isUserPayer && paymentModeNeedsSource(expenseForm.paymentMode as "Cash" | "UPI" | "Debit Card" | "Credit Card" | "Bank Transfer");
+      const { bankAccount, creditCard } = parsePaymentSource(expenseForm.paymentSource);
+      if (needsSource && !expenseForm.paymentSource) {
+        return toast.error("Choose a bank account or credit card.");
+      }
+
       await addExpense(selectedGroup.group.id, {
         description: expenseForm.description.trim(),
         amount: totalAmount,
@@ -255,15 +267,9 @@ export default function GroupExpensesPage() {
         date: new Date(`${expenseForm.date}T12:00:00`).toISOString(),
         splits,
         isSettlement: false,
-        paymentMode: expenseForm.paidBy.toLowerCase() === "you" ? expenseForm.paymentMode : undefined,
-        bankAccountId:
-          expenseForm.paidBy.toLowerCase() === "you" && ["UPI", "Debit Card", "Bank Transfer"].includes(expenseForm.paymentMode)
-            ? expenseForm.bankAccountId || undefined
-            : undefined,
-        creditCardId:
-          expenseForm.paidBy.toLowerCase() === "you" && expenseForm.paymentMode === "Credit Card"
-            ? expenseForm.creditCardId || undefined
-            : undefined,
+        paymentMode: isUserPayer ? expenseForm.paymentMode : undefined,
+        bankAccountId: needsSource ? bankAccount || undefined : undefined,
+        creditCardId: needsSource ? creditCard || undefined : undefined,
       });
       toast.success("Group expense added.");
       setExpenseOpen(false);
@@ -343,8 +349,7 @@ export default function GroupExpensesPage() {
         return all;
       }, {} as Record<string, string>),
       paymentMode: "UPI",
-      bankAccountId: "",
-      creditCardId: "",
+      paymentSource: "",
     });
     setExpenseOpen(true);
   };
@@ -627,7 +632,13 @@ export default function GroupExpensesPage() {
                       <Label>Payment Mode</Label>
                       <Select
                         value={expenseForm.paymentMode}
-                        onValueChange={(val) => setExpenseForm((p) => ({ ...p, paymentMode: val ?? "UPI" }))}
+                        onValueChange={(val) =>
+                          setExpenseForm((p) => ({
+                            ...p,
+                            paymentMode: val ?? "UPI",
+                            paymentSource: val === "Cash" ? "" : p.paymentSource,
+                          }))
+                        }
                       >
                         <SelectTrigger className="w-full">
                           <SelectValue />
@@ -642,45 +653,31 @@ export default function GroupExpensesPage() {
                       </Select>
                     </div>
 
-                    {expenseForm.paymentMode === "Credit Card" ? (
-                      <div className="grid gap-2">
-                        <Label>Credit Card</Label>
-                        <Select
-                          value={expenseForm.creditCardId}
-                          onValueChange={(val) => setExpenseForm((p) => ({ ...p, creditCardId: val ?? "" }))}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Choose card" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {creditCards.map((card) => (
-                              <SelectItem key={card.id} value={card.id}>
-                                {card.name} · {card.last4Digits}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    ) : expenseForm.paymentMode !== "Cash" ? (
-                      <div className="grid gap-2">
-                        <Label>Bank Account to Debit</Label>
-                        <Select
-                          value={expenseForm.bankAccountId}
-                          onValueChange={(val) => setExpenseForm((p) => ({ ...p, bankAccountId: val ?? "" }))}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Choose account" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {bankAccounts.map((acc) => (
-                              <SelectItem key={acc.id} value={acc.id}>
-                                {getBankAccountLabel(acc)} {acc.last4Digits ? `· ${acc.last4Digits}` : ""}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    ) : null}
+                    {paymentModeNeedsSource(expenseForm.paymentMode as "Cash" | "UPI" | "Debit Card" | "Credit Card" | "Bank Transfer") ? (
+                      <PaymentSourceSelect
+                        value={expenseForm.paymentSource}
+                        onValueChange={(paymentSource) =>
+                          setExpenseForm((p) => ({
+                            ...p,
+                            paymentSource,
+                            paymentMode: resolvePaymentModeFromSource(
+                              paymentSource,
+                              p.paymentMode as "Cash" | "UPI" | "Debit Card" | "Credit Card" | "Bank Transfer"
+                            ),
+                          }))
+                        }
+                        bankAccounts={bankAccounts.map((acc) => ({
+                          id: acc.id,
+                          name: getBankAccountLabel(acc),
+                          last4Digits: acc.last4Digits,
+                        }))}
+                        creditCards={creditCards}
+                        label="Payment source"
+                        placeholder="Choose bank account or credit card"
+                      />
+                    ) : (
+                      <div />
+                    )}
                   </div>
                 </div>
               )}

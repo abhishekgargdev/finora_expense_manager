@@ -19,7 +19,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import PaymentSourceSelect from "@/components/finance/PaymentSourceSelect";
 import { cn } from "@/lib/utils";
+import {
+  parsePaymentSource,
+  paymentModeNeedsSource,
+  resolvePaymentModeFromSource,
+  type PaymentSourceValue,
+} from "@/lib/payment-source";
 import {
   calculateMaturityDate,
   calculateLumpsumMaturity,
@@ -49,8 +56,8 @@ export default function QuickAddDialog({ open, onOpenChange, onSuccess }: Props)
   const [category, setCategory] = React.useState("");
   const [date, setDate] = React.useState(format(new Date(), "yyyy-MM-dd"));
   const [paymentMode, setPaymentMode] = React.useState("");
+  const [paymentSource, setPaymentSource] = React.useState<PaymentSourceValue>("");
   const [bankAccount, setBankAccount] = React.useState("");
-  const [creditCard, setCreditCard] = React.useState("");
   const [note, setNote] = React.useState("");
   
   // Investment State
@@ -121,8 +128,8 @@ export default function QuickAddDialog({ open, onOpenChange, onSuccess }: Props)
     setSource("");
     setNote("");
     setDate(format(new Date(), "yyyy-MM-dd"));
+    setPaymentSource("");
     setBankAccount("");
-    setCreditCard("");
     setCategory("");
     setPaymentMode("");
     setInvestmentName("");
@@ -169,10 +176,11 @@ export default function QuickAddDialog({ open, onOpenChange, onSuccess }: Props)
     }
   }, [activeTab]);
 
-  const showBankAccount = activeTab === "expense" 
-    ? ["UPI", "Debit Card", "Bank Transfer"].includes(paymentMode)
-    : activeTab === "income" || activeTab === "lending" || (activeTab === "investment" && investmentCategory === "Fixed-Tenure" && investmentMode === "Lumpsum");
-  const showCreditCard = activeTab === "expense" && paymentMode === "Credit Card";
+  const showBankAccount =
+    activeTab === "income" ||
+    activeTab === "lending" ||
+    (activeTab === "investment" && investmentCategory === "Fixed-Tenure" && investmentMode === "Lumpsum");
+  const showPaymentSource = activeTab === "expense" && paymentModeNeedsSource(paymentMode as (typeof EXPENSE_PAYMENT_MODES)[number]);
 
   // Live preview logic for Fixed-Tenure
   let previewMaturityDateStr = "";
@@ -235,18 +243,18 @@ export default function QuickAddDialog({ open, onOpenChange, onSuccess }: Props)
 
       if (activeTab === "expense") {
         url = "/api/expenses";
+        const { bankAccount, creditCard } = parsePaymentSource(paymentSource);
         payload = {
           amount: numAmount,
           source: source.trim() || undefined,
           category,
           date: isoDate,
           paymentMode,
-          bankAccount: showBankAccount ? bankAccount || null : null,
-          creditCard: showCreditCard ? creditCard || null : null,
+          bankAccount: showPaymentSource ? bankAccount : null,
+          creditCard: showPaymentSource ? creditCard : null,
           note: note.trim() || undefined,
         };
-        if (showBankAccount && !bankAccount) throw new Error("Please select a bank account to debit.");
-        if (showCreditCard && !creditCard) throw new Error("Please select a credit card.");
+        if (showPaymentSource && !paymentSource) throw new Error("Please select a bank account or credit card.");
       } else if (activeTab === "income") {
         url = "/api/income";
         payload = {
@@ -433,7 +441,14 @@ export default function QuickAddDialog({ open, onOpenChange, onSuccess }: Props)
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="grid gap-2">
                   <Label>Payment Mode</Label>
-                  <Select value={paymentMode} onValueChange={(val) => setPaymentMode(val ?? "")}>
+                  <Select
+                    value={paymentMode}
+                    onValueChange={(val) => {
+                      const mode = val ?? "";
+                      setPaymentMode(mode);
+                      if (mode === "Cash") setPaymentSource("");
+                    }}
+                  >
                     <SelectTrigger className="w-full">
                       <SelectValue>{paymentMode}</SelectValue>
                     </SelectTrigger>
@@ -464,52 +479,22 @@ export default function QuickAddDialog({ open, onOpenChange, onSuccess }: Props)
                 </div>
               </div>
 
-              {showBankAccount && (
-                <div className="grid gap-2">
-                  <Label>Bank Account to Debit</Label>
-                  <Select value={bankAccount} onValueChange={(val) => setBankAccount(val ?? "")}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Choose a bank account">
-                        {bankAccount
-                          ? getBankAccountLabel(bankAccounts.find((a) => a.id === bankAccount)) +
-                            (bankAccounts.find((a) => a.id === bankAccount)?.last4Digits
-                              ? ` · ${bankAccounts.find((a) => a.id === bankAccount)?.last4Digits}`
-                              : "")
-                          : undefined}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {bankAccounts.map((acc) => (
-                        <SelectItem key={acc.id} value={acc.id}>
-                          {getBankAccountLabel(acc)} {acc.last4Digits ? `· ${acc.last4Digits}` : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {showCreditCard && (
-                <div className="grid gap-2">
-                  <Label>Credit Card to Charge</Label>
-                  <Select value={creditCard} onValueChange={(val) => setCreditCard(val ?? "")}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Choose a credit card">
-                        {creditCard
-                          ? creditCards.find((c) => c.id === creditCard)?.name +
-                            ` · ${creditCards.find((c) => c.id === creditCard)?.last4Digits}`
-                          : undefined}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {creditCards.map((card) => (
-                        <SelectItem key={card.id} value={card.id}>
-                          {card.name} · {card.last4Digits}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              {showPaymentSource && (
+                <PaymentSourceSelect
+                  value={paymentSource}
+                  onValueChange={(source) => {
+                    setPaymentSource(source);
+                    setPaymentMode(resolvePaymentModeFromSource(source, paymentMode as (typeof EXPENSE_PAYMENT_MODES)[number]));
+                  }}
+                  bankAccounts={bankAccounts.map((acc) => ({
+                    id: acc.id,
+                    name: getBankAccountLabel(acc),
+                    last4Digits: acc.last4Digits,
+                  }))}
+                  creditCards={creditCards}
+                  label="Payment source"
+                  placeholder="Choose bank account or credit card"
+                />
               )}
             </>
           )}

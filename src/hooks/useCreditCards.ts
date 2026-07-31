@@ -96,5 +96,16 @@ export function useCreditCards() {
           body: "{}",
         })
       ),
+    transaction: (
+      id: string,
+      input: { type: "Charge" | "Credit"; amount: number; description: string; date: string }
+    ) =>
+      mutate(() =>
+        fetch(`/api/credit-cards/${id}/transactions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(input),
+        })
+      ),
   };
 }

@@ -62,7 +62,7 @@ async function read(response: Response | Promise<Response>) {
   return payload;
 }
 export default function CreditCardsPage() {
-  const { cards, loading, mutating, create, update, remove, generateBill } = useCreditCards();
+  const { cards, loading, mutating, create, update, remove, generateBill, transaction } = useCreditCards();
   const [form, setForm] = React.useState<CardInput>(empty());
   const [addOpen, setAddOpen] = React.useState(false);
   const [editingCard, setEditingCard] = React.useState<CreditCard | null>(null);
@@ -73,6 +73,13 @@ export default function CreditCardsPage() {
   const [detailLoading, setDetailLoading] = React.useState(false);
   const [payBill, setPayBill] = React.useState<CardBill | null>(null);
   const [bankAccount, setBankAccount] = React.useState("");
+  const [transactionOpen, setTransactionOpen] = React.useState(false);
+  const [transactionForm, setTransactionForm] = React.useState({
+    type: "Charge" as "Charge" | "Credit",
+    amount: "",
+    description: "",
+    date: format(new Date(), "yyyy-MM-dd"),
+  });
   const totalLimit = cards.reduce((sum, card) => sum + card.creditLimit, 0);
   const outstanding = cards.reduce((sum, card) => sum + card.outstanding, 0);
   const available = cards.reduce((sum, card) => sum + card.availableCredit, 0);
@@ -105,7 +112,7 @@ export default function CreditCardsPage() {
       const key = new Date(tx.date).toISOString().slice(0, 7);
       const existing = map.get(key);
       if (existing) {
-        existing.amount += tx.amount;
+        existing.amount += Math.abs(tx.amount);
       }
     });
     return Array.from(map.values());
@@ -122,18 +129,35 @@ export default function CreditCardsPage() {
         read(fetch(`/api/credit-cards/${card.id}`)),
         read(fetch(`/api/credit-cards/${card.id}/transactions`)),
         read(fetch(`/api/credit-cards/${card.id}/bills`)),
-        read(fetch("/api/income")),
+        read(fetch("/api/bank-accounts")),
       ]);
       setSelected(detail.card);
       setTransactions(tx.transactions);
       setBills(bill.bills);
-      setBankAccounts(accounts.bankAccounts);
+      setBankAccounts(
+        accounts.accounts.map((account: { id: string; bankName: string; accountName?: string; last4Digits?: string }) => ({
+          id: account.id,
+          name: account.accountName ? `${account.bankName} (${account.accountName})` : account.bankName,
+          last4Digits: account.last4Digits,
+        }))
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to load card details.");
     } finally {
       setDetailLoading(false);
     }
   }
+
+  React.useEffect(() => {
+    if (!transactionOpen) {
+      setTransactionForm({
+        type: "Charge",
+        amount: "",
+        description: "",
+        date: format(new Date(), "yyyy-MM-dd"),
+      });
+    }
+  }, [transactionOpen]);
   function startCreate() {
     setEditingCard(null);
     setForm(empty());
@@ -170,6 +194,24 @@ export default function CreditCardsPage() {
       setEditingCard(null);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to save card.");
+    }
+  }
+  async function submitTransaction(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selected) return;
+    const amount = Number(transactionForm.amount);
+    if (!Number.isFinite(amount) || amount <= 0) return toast.error("Enter a valid amount.");
+    try {
+      await transaction(selected.id, {
+        ...transactionForm,
+        amount,
+        date: new Date(`${transactionForm.date}T12:00:00`).toISOString(),
+      });
+      toast.success("Transaction added.");
+      setTransactionOpen(false);
+      await openCard(selected);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to add transaction.");
     }
   }
   async function generate() {
@@ -227,10 +269,16 @@ export default function CreditCardsPage() {
                   {selected.bankName} · Billing day {selected.billingCycleDay} · Due day {selected.dueDay}
                 </p>
               </div>
-              <Button variant="outline" onClick={() => startEdit(selected)}>
-                <Pencil className="size-4" />
-                Edit Card
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => startEdit(selected)}>
+                  <Pencil className="size-4" />
+                  Edit Card
+                </Button>
+                <Button onClick={() => setTransactionOpen(true)}>
+                  <Plus />
+                  Add Transaction
+                </Button>
+              </div>
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <StatCard icon={<ReceiptText />} label="Outstanding" value={selected.outstanding} />
@@ -265,6 +313,7 @@ export default function CreditCardsPage() {
                     <TableRow>
                       <TableHead>Description</TableHead>
                       <TableHead>Date</TableHead>
+                      <TableHead>Type</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
                     </TableRow>
@@ -272,26 +321,31 @@ export default function CreditCardsPage() {
                   <TableBody>
                     {detailLoading ? (
                       <TableRow>
-                        <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
+                        <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
                           Loading transactions…
                         </TableCell>
                       </TableRow>
                     ) : transactions.length ? (
-                      transactions.map((item) => (
+                      transactions.map((item) => {
+                        const isCredit = item.amount < 0;
+                        return (
                         <TableRow key={item.id}>
                           <TableCell className="font-medium">{item.description || "Card purchase"}</TableCell>
                           <TableCell>{format(new Date(item.date), "dd MMM yyyy")}</TableCell>
+                          <TableCell className={isCredit ? "text-income" : "text-expense"}>
+                            {isCredit ? "Credit" : "Charge"}
+                          </TableCell>
                           <TableCell>
                             <StatusBadge status={item.billed ? "Billed" : "Current cycle"} />
                           </TableCell>
                           <TableCell className="text-right">
-                            <MoneyText value={item.amount} />
+                            <MoneyText value={Math.abs(item.amount)} variant={isCredit ? "positive" : "negative"} />
                           </TableCell>
                         </TableRow>
-                      ))
+                      )})
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
+                        <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
                           No transactions for this card yet.
                         </TableCell>
                       </TableRow>
@@ -409,6 +463,13 @@ export default function CreditCardsPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        <CardTransactionDialog
+          open={transactionOpen}
+          onOpenChange={setTransactionOpen}
+          form={transactionForm}
+          setForm={setTransactionForm}
+          onSubmit={submitTransaction}
+        />
       </div>
     );
   return (
@@ -455,13 +516,24 @@ export default function CreditCardsPage() {
             <div key={card.id} className="group relative">
               <button className="w-full text-left" onClick={() => void openCard(card)}>
                 <CreditCardVisual card={card} />
-                <div className="mt-3 flex items-center justify-between">
+                <div className="mt-3 flex items-center justify-between gap-2">
                   <div>
                     <div className="font-medium">{card.cardName}</div>
                     <div className="text-sm text-muted-foreground">
-                      Available <MoneyText value={card.availableCredit} />
+                      Outstanding <MoneyText value={card.outstanding} /> · Available{" "}
+                      <MoneyText value={card.availableCredit} />
                     </div>
                   </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void openCard(card);
+                    }}
+                  >
+                    Manage
+                  </Button>
                 </div>
               </button>
               <div className="absolute bottom-0 right-0 flex gap-1">
@@ -545,6 +617,89 @@ function CreditCardVisual({ card, className = "" }: { card: CreditCard; classNam
         </div>
       </div>
     </div>
+  );
+}
+function CardTransactionDialog({
+  open,
+  onOpenChange,
+  form,
+  setForm,
+  onSubmit,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  form: { type: "Charge" | "Credit"; amount: string; description: string; date: string };
+  setForm: React.Dispatch<
+    React.SetStateAction<{ type: "Charge" | "Credit"; amount: string; description: string; date: string }>
+  >;
+  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+}) {
+  const change = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
+    setForm((current) => ({ ...current, [key]: value }));
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add card transaction</DialogTitle>
+          <DialogDescription>Record a manual charge or credit on this card.</DialogDescription>
+        </DialogHeader>
+        <form className="grid gap-4" onSubmit={onSubmit}>
+          <div className="grid gap-2">
+            <Label>Type</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant={form.type === "Charge" ? "default" : "outline"}
+                onClick={() => change("type", "Charge")}
+              >
+                Charge
+              </Button>
+              <Button
+                type="button"
+                variant={form.type === "Credit" ? "default" : "outline"}
+                onClick={() => change("type", "Credit")}
+              >
+                Credit / Refund
+              </Button>
+            </div>
+          </div>
+          <div className="grid gap-2">
+            <Label>Amount</Label>
+            <Input
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={form.amount}
+              onChange={(event) => change("amount", event.target.value)}
+              required
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label>Description</Label>
+            <Input
+              value={form.description}
+              onChange={(event) => change("description", event.target.value)}
+              placeholder="Online purchase, refund, fee..."
+              required
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label>Date</Label>
+            <Input type="date" value={form.date} onChange={(event) => change("date", event.target.value)} required />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit">
+              <ReceiptText />
+              Add transaction
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 function CardDialog({

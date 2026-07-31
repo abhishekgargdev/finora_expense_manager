@@ -30,13 +30,21 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import PaymentSourceSelect from "@/components/finance/PaymentSourceSelect";
 import { staggerContainer, fadeInUp } from "@/lib/motion";
+import {
+  expensePaymentAccountLabel,
+  parsePaymentSource,
+  paymentModeNeedsSource,
+  resolvePaymentModeFromSource,
+  toPaymentSource,
+  type PaymentSourceValue,
+} from "@/lib/payment-source";
 import { type ExpenseEntry, type ExpenseInput, useExpenses } from "@/hooks/useExpenses";
 import { useSearchParams } from "next/navigation";
 import { useCategories } from "@/hooks/useCategories";
 
 const PAYMENT_MODES = ["Cash", "UPI", "Debit Card", "Credit Card", "Bank Transfer"] as const;
-const BANK_PAYMENT_MODES = new Set(["UPI", "Debit Card", "Bank Transfer"]);
 const MONTHS = Array.from({ length: 12 }, (_, index) => new Date(2024, index).toLocaleString("en", { month: "long" }));
 const CHART_COLORS = ["#0f766e", "#2563eb", "#d97706", "#dc2626", "#7c3aed", "#db2777", "#4b5563"];
 
@@ -46,8 +54,7 @@ type FormState = {
   category: string;
   date: string;
   paymentMode: ExpenseInput["paymentMode"];
-  bankAccount: string;
-  creditCard: string;
+  paymentSource: PaymentSourceValue;
   note: string;
 };
 const emptyForm = (): FormState => ({
@@ -56,8 +63,7 @@ const emptyForm = (): FormState => ({
   category: "Food",
   date: format(new Date(), "yyyy-MM-dd"),
   paymentMode: "UPI",
-  bankAccount: "",
-  creditCard: "",
+  paymentSource: "",
   note: "",
 });
 const toForm = (expense: ExpenseEntry): FormState => ({
@@ -66,8 +72,7 @@ const toForm = (expense: ExpenseEntry): FormState => ({
   category: expense.category,
   date: format(new Date(expense.date), "yyyy-MM-dd"),
   paymentMode: expense.paymentMode,
-  bankAccount: expense.bankAccount ?? "",
-  creditCard: expense.creditCard ?? "",
+  paymentSource: toPaymentSource(expense.bankAccount, expense.creditCard),
   note: expense.note ?? "",
 });
 const displayDate = (date: string) => format(new Date(date), "dd MMM yyyy");
@@ -209,8 +214,7 @@ export default function ExpensesPage() {
   const years = Array.from(
     new Set([today.getFullYear(), ...expenses.map((expense) => new Date(expense.date).getFullYear())])
   ).sort((a, b) => b - a);
-  const showBankAccount = BANK_PAYMENT_MODES.has(form.paymentMode);
-  const showCreditCard = form.paymentMode === "Credit Card";
+  const showPaymentSource = paymentModeNeedsSource(form.paymentMode);
 
   React.useEffect(() => {
     if (searchParams.get("add") === "true") {
@@ -247,8 +251,10 @@ export default function ExpensesPage() {
     event.preventDefault();
     const amount = Number(form.amount);
     if (!Number.isFinite(amount) || amount <= 0) return toast.error("Enter an amount greater than zero.");
-    if (showBankAccount && !form.bankAccount) return toast.error("Choose the account to debit.");
-    if (showCreditCard && !form.creditCard) return toast.error("Choose a credit card.");
+    if (showPaymentSource && !form.paymentSource) {
+      return toast.error("Choose a bank account or credit card.");
+    }
+    const { bankAccount, creditCard } = parsePaymentSource(form.paymentSource);
 
     let finalCategory = form.category;
     if (form.category === "Other" && customCategory.trim()) {
@@ -267,8 +273,8 @@ export default function ExpensesPage() {
       category: finalCategory,
       date: new Date(`${form.date}T12:00:00`).toISOString(),
       paymentMode: form.paymentMode,
-      bankAccount: showBankAccount ? form.bankAccount : null,
-      creditCard: showCreditCard ? form.creditCard : null,
+      bankAccount: showPaymentSource ? bankAccount : null,
+      creditCard: showPaymentSource ? creditCard : null,
       note: form.note.trim() || undefined,
     };
     try {
@@ -448,7 +454,15 @@ export default function ExpensesPage() {
                         </TableCell>
                         <TableCell>{expense.category}</TableCell>
                         <TableCell>{displayDate(expense.date)}</TableCell>
-                        <TableCell>{expense.paymentMode}</TableCell>
+                        <TableCell>
+                          <div>{expense.paymentMode}</div>
+                          {(() => {
+                            const accountLabel = expensePaymentAccountLabel(expense, bankAccounts, creditCards);
+                            return accountLabel ? (
+                              <div className="mt-0.5 text-xs text-muted-foreground">{accountLabel}</div>
+                            ) : null;
+                          })()}
+                        </TableCell>
                         <TableCell className="text-right">
                           <MoneyText value={expense.amount} variant="negative" />
                         </TableCell>
@@ -506,7 +520,13 @@ export default function ExpensesPage() {
                     <MoneyText value={expense.amount} variant="negative" className="font-semibold" />
                   </div>
                   <div className="mt-4 flex items-center justify-between border-t pt-3 text-sm text-muted-foreground">
-                    <span>{expense.paymentMode}</span>
+                    <div>
+                      <div>{expense.paymentMode}</div>
+                      {(() => {
+                        const accountLabel = expensePaymentAccountLabel(expense, bankAccounts, creditCards);
+                        return accountLabel ? <div className="text-xs">{accountLabel}</div> : null;
+                      })()}
+                    </div>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon-sm" onClick={() => startEdit(expense)} aria-label="Edit expense">
                         <Pencil />
@@ -653,7 +673,14 @@ export default function ExpensesPage() {
               <Label>Payment mode</Label>
               <Select
                 value={form.paymentMode}
-                onValueChange={(value) => updateForm("paymentMode", (value ?? "Cash") as ExpenseInput["paymentMode"])}
+                onValueChange={(value) => {
+                  const mode = (value ?? "Cash") as ExpenseInput["paymentMode"];
+                  setForm((current) => ({
+                    ...current,
+                    paymentMode: mode,
+                    paymentSource: mode === "Cash" ? "" : current.paymentSource,
+                  }));
+                }}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue>{form.paymentMode}</SelectValue>
@@ -667,60 +694,21 @@ export default function ExpensesPage() {
                 </SelectContent>
               </Select>
             </div>
-            {showCreditCard && (
-              <div className="grid gap-2">
-                <Label>Credit card</Label>
-                <Select
-                  value={form.creditCard || "none"}
-                  onValueChange={(value) => updateForm("creditCard", value === "none" ? "" : (value ?? ""))}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Choose a credit card">
-                      {form.creditCard
-                        ? creditCards.find((card) => card.id === form.creditCard)?.name +
-                          ` · ${creditCards.find((card) => card.id === form.creditCard)?.last4Digits}`
-                        : undefined}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Choose a credit card</SelectItem>
-                    {creditCards.map((card) => (
-                      <SelectItem key={card.id} value={card.id}>
-                        {card.name} · {card.last4Digits}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            {showBankAccount && (
-              <div className="grid gap-2">
-                <Label>Bank account to debit</Label>
-                <Select
-                  value={form.bankAccount || "none"}
-                  onValueChange={(value) => updateForm("bankAccount", value === "none" ? "" : (value ?? ""))}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Choose a bank account">
-                      {form.bankAccount
-                        ? bankAccounts.find((account) => account.id === form.bankAccount)?.name +
-                          (bankAccounts.find((account) => account.id === form.bankAccount)?.last4Digits
-                            ? ` · ${bankAccounts.find((account) => account.id === form.bankAccount)?.last4Digits}`
-                            : "")
-                        : undefined}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Choose a bank account</SelectItem>
-                    {bankAccounts.map((account) => (
-                      <SelectItem key={account.id} value={account.id}>
-                        {account.name}
-                        {account.last4Digits ? ` · ${account.last4Digits}` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            {showPaymentSource && (
+              <PaymentSourceSelect
+                value={form.paymentSource}
+                onValueChange={(paymentSource) =>
+                  setForm((current) => ({
+                    ...current,
+                    paymentSource,
+                    paymentMode: resolvePaymentModeFromSource(paymentSource, current.paymentMode),
+                  }))
+                }
+                bankAccounts={bankAccounts}
+                creditCards={creditCards}
+                label="Payment source"
+                placeholder="Choose bank account or credit card"
+              />
             )}
             <div className="grid gap-2">
               <Label htmlFor="expense-note">
