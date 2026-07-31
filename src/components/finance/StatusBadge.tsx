@@ -12,9 +12,12 @@ export default function StatusBadge({ status, className = "" }: Props) {
     Settled: "text-settled bg-settled-10",
     Paid: "text-settled bg-settled-10",
     Unpaid: "text-expense bg-expense-10",
+    Active: "text-primary bg-primary/10",
+    Matured: "text-settled bg-settled-10",
+    "Closed Prematurely": "text-muted-foreground bg-muted",
   };
 
-  const classes = map[status] ?? "text-muted bg-muted/10";
+  const classes = map[status] ?? "text-muted-foreground bg-muted/30";
   return (
     <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${classes} ${className}`}>
       {status}

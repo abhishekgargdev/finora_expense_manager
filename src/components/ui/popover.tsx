@@ -44,7 +44,7 @@ function PopoverContent({
     </PopoverPrimitive.Positioner>
   );
 
-  return disablePortal ? content : <PopoverPrimitive.Portal>{content}</PopoverPrimitive.Portal>;
+  return <PopoverPrimitive.Portal>{content}</PopoverPrimitive.Portal>;
 }
 
 function PopoverHeader({ className, ...props }: React.ComponentProps<"div">) {

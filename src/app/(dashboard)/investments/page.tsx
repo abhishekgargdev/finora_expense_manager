@@ -15,6 +15,7 @@ import {
   ChevronUp,
   CheckCircle,
   AlertTriangle,
+  Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 import EmptyState from "@/components/finance/EmptyState";
@@ -170,7 +171,7 @@ const toForm = (item: InvestmentEntry): FormState => ({
 });
 
 export default function InvestmentsPage() {
-  const { investments, isLoading, isMutating, create, update, remove, fetchContributions, updateContribution } =
+  const { investments, isLoading, isMutating, create, update, remove, fetchContributions, updateContribution, refetch } =
     useInvestments();
   const { accounts: bankAccounts } = useBankAccounts();
 
@@ -195,6 +196,29 @@ export default function InvestmentsPage() {
     note: "",
   });
 
+  // Boost Dialog state
+  const [boostOpen, setBoostOpen] = React.useState(false);
+  const [selectedBoostParent, setSelectedBoostParent] = React.useState<InvestmentEntry | null>(null);
+  const [boostForm, setBoostForm] = React.useState({
+    amount: "",
+    bankAccount: "",
+    date: format(new Date(), "yyyy-MM-dd"),
+    note: "",
+  });
+  const [isBoosting, setIsBoosting] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!boostOpen) {
+      setBoostForm({
+        amount: "",
+        bankAccount: "",
+        date: format(new Date(), "yyyy-MM-dd"),
+        note: "",
+      });
+      setSelectedBoostParent(null);
+    }
+  }, [boostOpen]);
+
   React.useEffect(() => {
     if (!open) {
       setForm(emptyForm());
@@ -214,6 +238,59 @@ export default function InvestmentsPage() {
       setSelectedContributionParent(null);
     }
   }, [markPaidOpen]);
+
+  // Boost handlers
+  function openBoost(parent: InvestmentEntry) {
+    setSelectedBoostParent(parent);
+    setBoostForm({
+      amount: "",
+      bankAccount: parent.bankAccount || "",
+      date: format(new Date(), "yyyy-MM-dd"),
+      note: "Boost contribution",
+    });
+    setBoostOpen(true);
+  }
+
+  async function submitBoost(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedBoostParent) return;
+    const amt = Number(boostForm.amount);
+    if (!Number.isFinite(amt) || amt <= 0) return toast.error("Enter valid boost amount.");
+
+    setIsBoosting(true);
+    try {
+      const res = await fetch(`/api/investments/${selectedBoostParent.id}/contributions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: amt,
+          bankAccount: boostForm.bankAccount || undefined,
+          date: new Date(`${boostForm.date}T12:00:00`).toISOString(),
+          note: boostForm.note.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to apply boost.");
+
+      toast.success("Investment boosted successfully.");
+      await refetch();
+
+      // Refresh contributions checklist in map if expanded
+      if (contributionsMap[selectedBoostParent.id]) {
+        const fresh = await fetchContributions(selectedBoostParent.id);
+        setContributionsMap((current) => ({
+          ...current,
+          [selectedBoostParent.id]: fresh.contributions,
+        }));
+      }
+
+      setBoostOpen(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to apply boost.");
+    } finally {
+      setIsBoosting(false);
+    }
+  }
 
   // Upcoming maturities state
   const [upcomingMaturities, setUpcomingMaturities] = React.useState<InvestmentEntry[]>([]);
@@ -752,6 +829,7 @@ export default function InvestmentsPage() {
                         isLoadingContribs={!!loadingContributions[item.id]}
                         onMarkPaid={openMarkPaid}
                         onRevertPaid={setContributionToRevert}
+                        onBoost={openBoost}
                       />
                     ))}
                   </div>
@@ -913,6 +991,7 @@ export default function InvestmentsPage() {
                   isLoadingContribs={!!loadingContributions[item.id]}
                   onMarkPaid={openMarkPaid}
                   onRevertPaid={setContributionToRevert}
+                  onBoost={openBoost}
                 />
               ))}
             </div>
@@ -1495,7 +1574,91 @@ export default function InvestmentsPage() {
         description="Are you sure you want to revert this installment payment? The associated expense entry and bank account debit will be permanently deleted and reversed."
         onConfirm={handleRevertPayment}
       />
-      <LoaderOverlay show={isMutating} label={editing ? "Saving investment..." : "Updating investments..."} />
+
+      <Dialog open={boostOpen} onOpenChange={setBoostOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Zap className="size-5 text-primary fill-primary/10 animate-pulse" />
+              Boost Investment
+            </DialogTitle>
+            <DialogDescription>
+              Add an ad-hoc, one-off payment to boost <strong>{selectedBoostParent?.name || selectedBoostParent?.type}</strong> at {selectedBoostParent?.institution}.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={submitBoost} className="grid gap-4 mt-2">
+            <div className="grid gap-2">
+              <Label htmlFor="boost-amount">Boost Amount (₹) *</Label>
+              <Input
+                id="boost-amount"
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={boostForm.amount}
+                onChange={(e) => setBoostForm((curr) => ({ ...curr, amount: e.target.value }))}
+                placeholder="0.00"
+                required
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label>Source Bank Account (Debit Boost)</Label>
+              <Select
+                value={boostForm.bankAccount}
+                onValueChange={(val) => setBoostForm((curr) => ({ ...curr, bankAccount: val ?? "" }))}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select account (Optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {bankAccounts.map((account) => (
+                    <SelectItem key={account.id} value={account.id}>
+                      {account.accountName ? `${account.bankName} (${account.accountName})` : account.bankName} {account.last4Digits ? `(***${account.last4Digits})` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-2">
+              <Label>Payment Date</Label>
+              <Popover>
+                <PopoverTrigger render={<Button variant="outline" className="w-full justify-start font-normal" />}>
+                  <CalendarDays className="size-4 mr-2" />
+                  {format(new Date(`${boostForm.date}T12:00:00`), "dd MMM yyyy")}
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-auto p-0" disablePortal={true}>
+                  <Calendar
+                    mode="single"
+                    selected={new Date(`${boostForm.date}T12:00:00`)}
+                    onSelect={(date) =>
+                      date && setBoostForm((curr) => ({ ...curr, date: format(date, "yyyy-MM-dd") }))
+                    }
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="boost-note">Note / Description (Optional)</Label>
+              <Input
+                id="boost-note"
+                value={boostForm.note}
+                onChange={(e) => setBoostForm((curr) => ({ ...curr, note: e.target.value }))}
+                placeholder="Boost contribution, bonus top-up, etc."
+              />
+            </div>
+
+            <DialogFooter className="gap-2">
+              <Button type="button" variant="outline" onClick={() => setBoostOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">Apply Boost</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      <LoaderOverlay show={isMutating || isBoosting} label={isBoosting ? "Applying boost..." : (editing ? "Saving investment..." : "Updating investments...")} />
     </div>
   );
 }
@@ -1511,6 +1674,7 @@ type CardProps = {
   isLoadingContribs: boolean;
   onMarkPaid: (c: ContributionEntry, parent: InvestmentEntry) => void;
   onRevertPaid: (c: ContributionEntry) => void;
+  onBoost: (item: InvestmentEntry) => void;
 };
 
 function FixedTenureCard({
@@ -1523,6 +1687,7 @@ function FixedTenureCard({
   isLoadingContribs,
   onMarkPaid,
   onRevertPaid,
+  onBoost,
 }: CardProps) {
   const daysLeft = daysToMaturity(item.maturityDate!);
   const progressVal = tenureProgressPercent(item.startDate!, item.maturityDate!);
@@ -1554,7 +1719,15 @@ function FixedTenureCard({
             {item.planName && <p className="text-xs text-muted-foreground mt-0.5">{item.planName}</p>}
           </div>
 
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Button
+              variant="outline"
+              size="xs"
+              className="h-7 px-2 border-primary/30 text-primary hover:bg-primary/5 flex items-center gap-1 text-[11px] font-semibold"
+              onClick={() => onBoost(item)}
+            >
+              <Zap className="size-3 fill-primary/10" /> Boost
+            </Button>
             <Tooltip>
               <TooltipTrigger
                 render={
@@ -1653,10 +1826,16 @@ function FixedTenureCard({
         <Progress value={progressVal} className="h-1.5 w-full bg-muted">
           <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${progressVal}%` }} />
         </Progress>
-        <p className="text-[10px] text-muted-foreground flex justify-between">
-          <span>Started: {item.startDate ? format(new Date(item.startDate), "dd MMM yyyy") : ""}</span>
-          <span>Matures: {item.maturityDate ? format(new Date(item.maturityDate), "dd MMM yyyy") : ""}</span>
-        </p>
+        <div className="grid grid-cols-2 gap-2 text-[10px] text-muted-foreground pt-0.5 border-t mt-1.5 pt-1.5">
+          <div className="mt-3">
+            <span className="block text-[8px] uppercase tracking-wider text-muted-foreground/80">Start Date</span>
+            <span className="font-semibold text-foreground">{item.startDate ? format(new Date(item.startDate), "dd MMM yyyy") : ""}</span>
+          </div>
+          <div className="text-right mt-3">
+            <span className="block text-[8px] uppercase tracking-wider text-muted-foreground/80">Maturity Date</span>
+            <span className="font-semibold text-foreground">{item.maturityDate ? format(new Date(item.maturityDate), "dd MMM yyyy") : ""}</span>
+          </div>
+        </div>
       </div>
 
       {/* Recurring Installments Toggle */}

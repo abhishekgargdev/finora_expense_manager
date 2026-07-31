@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { addMonths } from "date-fns";
 
 import connect from "@/lib/db";
+import mongoose from "mongoose";
 import InvestmentModel from "@/models/Investment";
 import InvestmentContributionModel from "@/models/InvestmentContribution";
 import ExpenseModel from "@/models/Expense";
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
       .lean();
 
     const contribCounts = await InvestmentContributionModel.aggregate([
-      { $match: { user: userId } },
+      { $match: { user: new mongoose.Types.ObjectId(userId) } },
       {
         $group: {
           _id: "$investment",
