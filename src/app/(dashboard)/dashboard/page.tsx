@@ -24,12 +24,15 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import QuickAddDialog from "@/components/dashboard/QuickAddDialog";
+import { cn } from "@/lib/utils";
 type Summary = any;
 const colors = ["var(--income)", "var(--expense)", "var(--investment)", "var(--primary)", "var(--pending)", "#8b5cf6"];
 const config = {
   income: { label: "Income", color: "var(--income)" },
   expense: { label: "Expense", color: "var(--expense)" },
-  value: { label: "Value", color: "var(--investment)" },
+  investment: { label: "Investment", color: "var(--investment)" },
+  lendingGiven: { label: "Lent (Given)", color: "var(--pending)" },
+  lendingTaken: { label: "Borrowed (Taken)", color: "#14b8a6" },
 } satisfies ChartConfig;
 export default function DashboardPage() {
   const [data, setData] = React.useState<Summary | null>(null);
@@ -37,6 +40,7 @@ export default function DashboardPage() {
   const [year, setYear] = React.useState(String(new Date().getFullYear()));
   const [quickAddOpen, setQuickAddOpen] = React.useState(false);
   const [refreshTrigger, setRefreshTrigger] = React.useState(0);
+  const [timeframe, setTimeframe] = React.useState<"monthly" | "yearly">("monthly");
   React.useEffect(() => {
     void (async () => {
       const params = new URLSearchParams(month === "all" ? {} : { month, year });
@@ -171,16 +175,69 @@ export default function DashboardPage() {
 
       <motion.div className="grid gap-5 lg:grid-cols-[1.55fr_1fr]" variants={fadeInUp}>
         <section className="card p-5 hover:border-primary/20 hover:shadow-md transition-all duration-300">
-          <h3 className="font-heading font-semibold">Income vs Expense</h3>
-          <p className="text-sm text-muted-foreground">Last 12 months</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-heading font-semibold">Cashflow Allocation</h3>
+              <p className="text-sm text-muted-foreground">
+                {timeframe === "monthly" ? "Monthly allocation" : "Yearly allocation"}
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5 rounded-lg bg-muted p-1 text-xs font-medium">
+              <button
+                onClick={() => setTimeframe("monthly")}
+                className={cn(
+                  "rounded-md px-3 py-1.5 transition-all text-center select-none outline-none cursor-pointer",
+                  timeframe === "monthly"
+                    ? "bg-background text-foreground shadow-xs font-semibold"
+                    : "text-muted-foreground hover:bg-background/40 hover:text-foreground"
+                )}
+              >
+                Monthly
+              </button>
+              <button
+                onClick={() => setTimeframe("yearly")}
+                className={cn(
+                  "rounded-md px-3 py-1.5 transition-all text-center select-none outline-none cursor-pointer",
+                  timeframe === "yearly"
+                    ? "bg-background text-foreground shadow-xs font-semibold"
+                    : "text-muted-foreground hover:bg-background/40 hover:text-foreground"
+                )}
+              >
+                Yearly
+              </button>
+            </div>
+          </div>
           <ChartContainer config={config} className="mt-4 h-72 w-full aspect-auto">
-            <LineChart data={data.trend}>
-              <XAxis dataKey="month" tickFormatter={(value) => value.slice(5)} />
-              <YAxis />
+            <BarChart
+              data={timeframe === "monthly" ? data.monthlyTrend : data.yearlyTrend}
+              margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+            >
+              <XAxis
+                dataKey={timeframe === "monthly" ? "month" : "year"}
+                tickFormatter={
+                  timeframe === "monthly"
+                    ? (val) => {
+                        const [y, m] = val.split("-");
+                        const d = new Date(Number(y), Number(m) - 1, 1);
+                        return d.toLocaleString("default", { month: "short" }) + " '" + y.slice(2);
+                      }
+                    : undefined
+                }
+                stroke="var(--muted-foreground)"
+                fontSize={11}
+              />
+              <YAxis
+                stroke="var(--muted-foreground)"
+                fontSize={11}
+                tickFormatter={(val) => `₹${val >= 1000 ? (val / 1000).toFixed(0) + "k" : val}`}
+              />
               <ChartTooltip content={<ChartTooltipContent />} />
-              <Line dataKey="income" stroke="var(--color-income)" strokeWidth={3} dot={false} />
-              <Line dataKey="expense" stroke="var(--color-expense)" strokeWidth={3} dot={false} />
-            </LineChart>
+              <Bar dataKey="income" fill="var(--color-income)" radius={[4, 4, 0, 0]} name="Income" />
+              <Bar dataKey="expense" fill="var(--color-expense)" radius={[4, 4, 0, 0]} name="Expense" />
+              <Bar dataKey="investment" fill="var(--color-investment)" radius={[4, 4, 0, 0]} name="Investment" />
+              <Bar dataKey="lendingGiven" fill="var(--color-lendingGiven)" radius={[4, 4, 0, 0]} name="Lent" />
+              <Bar dataKey="lendingTaken" fill="var(--color-lendingTaken)" radius={[4, 4, 0, 0]} name="Borrowed" />
+            </BarChart>
           </ChartContainer>
         </section>
         <section className="card p-5 hover:border-primary/20 hover:shadow-md transition-all duration-300">
