@@ -43,6 +43,7 @@ import {
 import { type ExpenseEntry, type ExpenseInput, useExpenses } from "@/hooks/useExpenses";
 import { useSearchParams } from "next/navigation";
 import { useCategories } from "@/hooks/useCategories";
+import { Pagination } from "@/components/ui/pagination";
 
 const PAYMENT_MODES = ["Cash", "UPI", "Debit Card", "Credit Card", "Bank Transfer"] as const;
 const MONTHS = Array.from({ length: 12 }, (_, index) => new Date(2024, index).toLocaleString("en", { month: "long" }));
@@ -115,6 +116,20 @@ export default function ExpensesPage() {
       }),
     [expenses, month, year, category]
   );
+
+  const ITEMS_PER_PAGE = 10;
+  const [currentPage, setCurrentPage] = React.useState(1);
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [month, year, category]);
+
+  const paginatedExpenses = React.useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filtered.slice(start, start + ITEMS_PER_PAGE);
+  }, [filtered, currentPage]);
+
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
 
   const paymentModeData = React.useMemo(() => {
     const counts: Record<string, number> = {};
@@ -444,7 +459,7 @@ export default function ExpensesPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filtered.map((expense) => (
+                    {paginatedExpenses.map((expense) => (
                       <TableRow key={expense.id} className="hover:bg-muted/30 transition-colors">
                         <TableCell>
                           <div className="font-medium">{expense.source || expense.category}</div>
@@ -508,7 +523,7 @@ export default function ExpensesPage() {
               </div>
             </div>
             <div className="grid gap-3 md:hidden">
-              {filtered.map((expense) => (
+              {paginatedExpenses.map((expense) => (
                 <article key={expense.id} className="card p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -545,6 +560,14 @@ export default function ExpensesPage() {
                 </article>
               ))}
             </div>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              totalItems={filtered.length}
+              itemsPerPage={ITEMS_PER_PAGE}
+              className="mt-4"
+            />
           </div>
 
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-1">

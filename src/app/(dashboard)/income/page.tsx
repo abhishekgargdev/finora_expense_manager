@@ -34,6 +34,7 @@ import { staggerContainer, fadeInUp } from "@/lib/motion";
 import { type IncomeEntry, type IncomeInput, useIncome } from "@/hooks/useIncome";
 import { useSearchParams } from "next/navigation";
 import { useCategories } from "@/hooks/useCategories";
+import { Pagination } from "@/components/ui/pagination";
 
 const PAYMENT_MODES = ["Cash", "Bank Transfer", "UPI", "Other"] as const;
 const CHART_COLORS = ["#0f766e", "#2563eb", "#d97706", "#dc2626", "#7c3aed", "#db2777", "#4b5563"];
@@ -121,6 +122,20 @@ export default function IncomePage() {
       }),
     [income, month, year, category]
   );
+
+  const ITEMS_PER_PAGE = 10;
+  const [currentPage, setCurrentPage] = React.useState(1);
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [month, year, category]);
+
+  const paginatedIncome = React.useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredIncome.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredIncome, currentPage]);
+
+  const totalPages = Math.ceil(filteredIncome.length / ITEMS_PER_PAGE);
 
   const paymentModeData = React.useMemo(() => {
     const counts: Record<string, number> = {};
@@ -440,7 +455,7 @@ export default function IncomePage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredIncome.map((entry) => (
+                    {paginatedIncome.map((entry) => (
                       <TableRow key={entry.id} className="hover:bg-muted/30 transition-colors">
                         <TableCell>
                           <div className="font-medium">{entry.source}</div>
@@ -496,7 +511,7 @@ export default function IncomePage() {
               </div>
             </div>
             <div className="grid gap-3 md:hidden">
-              {filteredIncome.map((entry) => (
+              {paginatedIncome.map((entry) => (
                 <article key={entry.id} className="card p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -527,6 +542,14 @@ export default function IncomePage() {
                 </article>
               ))}
             </div>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              totalItems={filteredIncome.length}
+              itemsPerPage={ITEMS_PER_PAGE}
+              className="mt-4"
+            />
           </div>
 
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-1">

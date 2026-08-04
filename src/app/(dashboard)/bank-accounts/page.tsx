@@ -44,6 +44,7 @@ import {
   type BankTransaction,
   useBankAccounts,
 } from "@/hooks/useBankAccounts";
+import { Pagination } from "@/components/ui/pagination";
 const COLORS = ["#1e3a5f", "#0f766e", "#6d28d9", "#9a3412", "#9f1239", "#334155"];
 const today = () => format(new Date(), "yyyy-MM-dd");
 const emptyAccount = (): BankAccountInput & { currentBalance?: number } => ({
@@ -63,6 +64,20 @@ export default function BankAccountsPage() {
   }, [accounts]);
   const [selected, setSelected] = React.useState<BankAccount | null>(null);
   const [ledger, setLedger] = React.useState<BankTransaction[]>([]);
+
+  const ITEMS_PER_PAGE = 10;
+  const [currentPage, setCurrentPage] = React.useState(1);
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [selected]);
+
+  const paginatedLedger = React.useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return ledger.slice(start, start + ITEMS_PER_PAGE);
+  }, [ledger, currentPage]);
+
+  const totalPages = Math.ceil(ledger.length / ITEMS_PER_PAGE);
   const [accountOpen, setAccountOpen] = React.useState(false);
   const [transactionOpen, setTransactionOpen] = React.useState(false);
   const [transferOpen, setTransferOpen] = React.useState(false);
@@ -316,7 +331,7 @@ export default function BankAccountsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {ledger.map((item) => (
+                {paginatedLedger.map((item) => (
                   <TableRow key={item.id} className="hover:bg-muted/30 transition-colors">
                     <TableCell>{format(new Date(item.date), "dd MMM yyyy")}</TableCell>
                     <TableCell className="font-medium">{item.description || "Transaction"}</TableCell>
@@ -342,6 +357,17 @@ export default function BankAccountsPage() {
               </TableBody>
             </Table>
           </div>
+          {ledger.length > 0 && (
+            <div className="border-t px-4 bg-muted/10">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                totalItems={ledger.length}
+                itemsPerPage={ITEMS_PER_PAGE}
+              />
+            </div>
+          )}
         </div>
         <TransactionDialog
           open={transactionOpen}

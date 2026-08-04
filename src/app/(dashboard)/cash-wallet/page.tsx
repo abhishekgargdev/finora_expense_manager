@@ -34,11 +34,23 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useCashWallet } from "@/hooks/useCashWallet";
+import { Pagination } from "@/components/ui/pagination";
 
 const today = () => format(new Date(), "yyyy-MM-dd");
 
 export default function CashWalletPage() {
   const { balance, transactions, isLoading, isMutating, load, recordTransaction, transfer } = useCashWallet();
+
+  const ITEMS_PER_PAGE = 10;
+  const [currentPage, setCurrentPage] = React.useState(1);
+
+  const paginatedTransactions = React.useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return transactions.slice(start, start + ITEMS_PER_PAGE);
+  }, [transactions, currentPage]);
+
+  const totalPages = Math.ceil(transactions.length / ITEMS_PER_PAGE);
+
   const [bankAccounts, setBankAccounts] = React.useState<{ id: string; bankName: string; accountName?: string; last4Digits?: string; currentBalance: number }[]>([]);
   const getBankAccountLabel = React.useCallback((acc?: { bankName: string; accountName?: string }) => {
     if (!acc) return "";
@@ -283,7 +295,7 @@ export default function CashWalletPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {transactions.map((item) => (
+                {paginatedTransactions.map((item) => (
                   <TableRow key={item.id} className="hover:bg-muted/30 transition-colors">
                     <TableCell>{format(new Date(item.date), "dd MMM yyyy")}</TableCell>
                     <TableCell className="font-medium">{item.description || "Cash Transaction"}</TableCell>
@@ -313,6 +325,17 @@ export default function CashWalletPage() {
               </TableBody>
             </Table>
           </div>
+          {transactions.length > 0 && (
+            <div className="border-t px-4 bg-muted/10">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                totalItems={transactions.length}
+                itemsPerPage={ITEMS_PER_PAGE}
+              />
+            </div>
+          )}
         </div>
       </div>
 

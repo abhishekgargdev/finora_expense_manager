@@ -38,6 +38,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Pagination } from "@/components/ui/pagination";
+
 import {
   type CardBill,
   type CardInput,
@@ -69,6 +71,29 @@ export default function CreditCardsPage() {
   const [selected, setSelected] = React.useState<CreditCard | null>(null);
   const [transactions, setTransactions] = React.useState<CardTransaction[]>([]);
   const [bills, setBills] = React.useState<CardBill[]>([]);
+
+  const ITEMS_PER_PAGE = 10;
+  const [txPage, setTxPage] = React.useState(1);
+  const [billPage, setBillPage] = React.useState(1);
+
+  React.useEffect(() => {
+    setTxPage(1);
+    setBillPage(1);
+  }, [selected]);
+
+  const paginatedTransactions = React.useMemo(() => {
+    const start = (txPage - 1) * ITEMS_PER_PAGE;
+    return transactions.slice(start, start + ITEMS_PER_PAGE);
+  }, [transactions, txPage]);
+
+  const paginatedBills = React.useMemo(() => {
+    const start = (billPage - 1) * ITEMS_PER_PAGE;
+    return bills.slice(start, start + ITEMS_PER_PAGE);
+  }, [bills, billPage]);
+
+  const totalTxPages = Math.ceil(transactions.length / ITEMS_PER_PAGE);
+  const totalBillPages = Math.ceil(bills.length / ITEMS_PER_PAGE);
+
   const [bankAccounts, setBankAccounts] = React.useState<{ id: string; name: string; last4Digits?: string }[]>([]);
   const [detailLoading, setDetailLoading] = React.useState(false);
   const [payBill, setPayBill] = React.useState<CardBill | null>(null);
@@ -325,8 +350,8 @@ export default function CreditCardsPage() {
                           Loading transactions…
                         </TableCell>
                       </TableRow>
-                    ) : transactions.length ? (
-                      transactions.map((item) => {
+                    ) : paginatedTransactions.length ? (
+                      paginatedTransactions.map((item) => {
                         const isCredit = item.amount < 0;
                         return (
                         <TableRow key={item.id}>
@@ -353,6 +378,17 @@ export default function CreditCardsPage() {
                   </TableBody>
                 </Table>
               </div>
+              {transactions.length > 0 && (
+                <div className="border-t px-4 bg-muted/10">
+                  <Pagination
+                    currentPage={txPage}
+                    totalPages={totalTxPages}
+                    onPageChange={setTxPage}
+                    totalItems={transactions.length}
+                    itemsPerPage={ITEMS_PER_PAGE}
+                  />
+                </div>
+              )}
             </div>
           </TabsContent>
           <TabsContent value="bills" className="mt-4">
@@ -375,7 +411,7 @@ export default function CreditCardsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {bills.map((bill) => {
+                    {paginatedBills.map((bill) => {
                       const overdue = !bill.isPaid && new Date(bill.dueDate) < new Date();
                       return (
                         <TableRow key={bill.id} className={overdue ? "bg-expense-10" : ""}>
@@ -416,6 +452,17 @@ export default function CreditCardsPage() {
                   </TableBody>
                 </Table>
               </div>
+              {bills.length > 0 && (
+                <div className="border-t px-4 bg-muted/10">
+                  <Pagination
+                    currentPage={billPage}
+                    totalPages={totalBillPages}
+                    onPageChange={setBillPage}
+                    totalItems={bills.length}
+                    itemsPerPage={ITEMS_PER_PAGE}
+                  />
+                </div>
+              )}
             </div>
           </TabsContent>
         </Tabs>

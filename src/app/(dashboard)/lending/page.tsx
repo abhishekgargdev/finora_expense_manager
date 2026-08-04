@@ -42,6 +42,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Pagination } from "@/components/ui/pagination";
+
 import { type LendingEntry, type LendingInput, type BankAccountOption, useLending } from "@/hooks/useLending";
 import { useSearchParams } from "next/navigation";
 
@@ -878,6 +880,20 @@ function RepaymentHistoryList({
   repayments: any[];
   bankAccounts: BankAccountOption[];
 }) {
+  const ITEMS_PER_PAGE = 10;
+  const [currentPage, setCurrentPage] = React.useState(1);
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [repayments]);
+
+  const paginatedRepayments = React.useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return repayments.slice(start, start + ITEMS_PER_PAGE);
+  }, [repayments, currentPage]);
+
+  const totalPages = Math.ceil(repayments.length / ITEMS_PER_PAGE);
+
   return (
     <div className="card overflow-hidden">
       <Table>
@@ -891,7 +907,7 @@ function RepaymentHistoryList({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {repayments.map((item) => {
+          {paginatedRepayments.map((item) => {
             const account = item.bankAccount
               ? bankAccounts.find((a) => a.id === item.bankAccount)
               : null;
@@ -937,6 +953,17 @@ function RepaymentHistoryList({
           )}
         </TableBody>
       </Table>
+      {repayments.length > 0 && (
+        <div className="border-t px-4 bg-muted/10">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalItems={repayments.length}
+            itemsPerPage={ITEMS_PER_PAGE}
+          />
+        </div>
+      )}
     </div>
   );
 }

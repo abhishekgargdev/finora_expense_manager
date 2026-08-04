@@ -38,6 +38,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Pagination } from "@/components/ui/pagination";
+
 import { useGroups, type Group, type GroupDetail } from "@/hooks/useGroups";
 import {
   parsePaymentSource,
@@ -53,6 +55,21 @@ export default function GroupExpensesPage() {
 
   const [selectedGroup, setSelectedGroup] = React.useState<GroupDetail | null>(null);
   const [detailLoading, setDetailLoading] = React.useState(false);
+
+  const ITEMS_PER_PAGE = 10;
+  const [currentPage, setCurrentPage] = React.useState(1);
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedGroup]);
+
+  const paginatedExpenses = React.useMemo(() => {
+    if (!selectedGroup) return [];
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return selectedGroup.expenses.slice(start, start + ITEMS_PER_PAGE);
+  }, [selectedGroup, currentPage]);
+
+  const totalPages = selectedGroup ? Math.ceil(selectedGroup.expenses.length / ITEMS_PER_PAGE) : 0;
 
   // Modals Open/Close
   const [createOpen, setCreateOpen] = React.useState(false);
@@ -528,7 +545,7 @@ export default function GroupExpensesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {selectedGroup.expenses.map((exp) => (
+                  {paginatedExpenses.map((exp) => (
                     <TableRow key={exp.id}>
                       <TableCell>{format(new Date(exp.date), "dd MMM yyyy")}</TableCell>
                       <TableCell>
@@ -555,6 +572,17 @@ export default function GroupExpensesPage() {
                 </TableBody>
               </Table>
             </div>
+            {selectedGroup.expenses.length > 0 && (
+              <div className="border-t px-4 bg-muted/10">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  totalItems={selectedGroup.expenses.length}
+                  itemsPerPage={ITEMS_PER_PAGE}
+                />
+              </div>
+            )}
           </section>
         </div>
 

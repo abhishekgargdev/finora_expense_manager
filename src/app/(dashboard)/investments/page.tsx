@@ -41,6 +41,8 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Pagination } from "@/components/ui/pagination";
+
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -176,6 +178,14 @@ export default function InvestmentsPage() {
   const { accounts: bankAccounts } = useBankAccounts();
 
   const [activeTab, setActiveTab] = React.useState<string>("All");
+  
+  const ITEMS_PER_PAGE = 10;
+  const [marketPage, setMarketPage] = React.useState(1);
+
+  React.useEffect(() => {
+    setMarketPage(1);
+  }, [activeTab]);
+
   const [open, setOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<InvestmentEntry | null>(null);
   const [form, setForm] = React.useState<FormState>(emptyForm);
@@ -314,6 +324,13 @@ export default function InvestmentsPage() {
   // Aggregate Calculations
   const marketLinked = investments.filter((item) => (item.category ?? "Market-Linked") === "Market-Linked");
   const fixedTenure = investments.filter((item) => item.category === "Fixed-Tenure");
+
+  const paginatedMarketLinked = React.useMemo(() => {
+    const start = (marketPage - 1) * ITEMS_PER_PAGE;
+    return marketLinked.slice(start, start + ITEMS_PER_PAGE);
+  }, [marketLinked, marketPage]);
+
+  const totalMarketPages = Math.ceil(marketLinked.length / ITEMS_PER_PAGE);
 
   const totalInvested = marketLinked.reduce((sum, item) => sum + item.amountInvested, 0);
   const totalCurrent = marketLinked.reduce((sum, item) => sum + item.currentValue, 0);
@@ -720,7 +737,7 @@ export default function InvestmentsPage() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {marketLinked.map((item) => {
+                            {paginatedMarketLinked.map((item) => {
                               const difference = item.currentValue - item.amountInvested;
                               return (
                                 <TableRow key={item.id}>
@@ -780,6 +797,17 @@ export default function InvestmentsPage() {
                           </TableBody>
                         </Table>
                       </div>
+                      {marketLinked.length > 0 && (
+                        <div className="border-t px-4 bg-muted/10">
+                          <Pagination
+                            currentPage={marketPage}
+                            totalPages={totalMarketPages}
+                            onPageChange={setMarketPage}
+                            totalItems={marketLinked.length}
+                            itemsPerPage={ITEMS_PER_PAGE}
+                          />
+                        </div>
+                      )}
                     </div>
                     <section className="card p-4 h-fit">
                       <h3 className="font-heading text-sm font-semibold">Asset Allocation</h3>
@@ -870,7 +898,7 @@ export default function InvestmentsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {marketLinked.map((item) => {
+                      {paginatedMarketLinked.map((item) => {
                         const difference = item.currentValue - item.amountInvested;
                         return (
                           <TableRow key={item.id}>
@@ -930,6 +958,17 @@ export default function InvestmentsPage() {
                     </TableBody>
                   </Table>
                 </div>
+                {marketLinked.length > 0 && (
+                  <div className="border-t px-4 bg-muted/10">
+                    <Pagination
+                      currentPage={marketPage}
+                      totalPages={totalMarketPages}
+                      onPageChange={setMarketPage}
+                      totalItems={marketLinked.length}
+                      itemsPerPage={ITEMS_PER_PAGE}
+                    />
+                  </div>
+                )}
               </div>
               <section className="card p-4 h-fit">
                 <h3 className="font-heading text-sm font-semibold">Asset Allocation</h3>
