@@ -25,6 +25,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import QuickAddDialog from "@/components/dashboard/QuickAddDialog";
+import SyncReminderBanner from "@/components/integrations/SyncReminderBanner";
 import { cn } from "@/lib/utils";
 type Summary = any;
 const colors = ["var(--income)", "var(--expense)", "var(--investment)", "var(--primary)", "var(--pending)", "#8b5cf6"];
@@ -97,6 +98,8 @@ export default function DashboardPage() {
       initial="hidden"
       animate="show"
     >
+      <SyncReminderBanner />
+
       <motion.div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end" variants={fadeInUp}>
         <div>
           <h2 className="font-heading text-2xl font-semibold">Financial overview</h2>
