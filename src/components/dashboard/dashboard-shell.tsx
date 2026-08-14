@@ -22,6 +22,7 @@ import {
   Banknote,
   Users,
   Plus,
+  Sparkles,
 } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -49,6 +50,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem,
 
 const navigation = [
   { title: "Dashboard", href: "/dashboard", icon: Home },
+  { title: "AI Advisor", href: "/ai-advisor", icon: Sparkles },
   { title: "Income", href: "/income", icon: TrendingUp },
   { title: "Expenses", href: "/expenses", icon: TrendingDown },
   { title: "Categories", href: "/categories", icon: Tags },
@@ -63,6 +65,7 @@ const navigation = [
 
 const primaryNavigation = [
   { title: "Dashboard", href: "/dashboard", icon: Home },
+  { title: "AI Advisor", href: "/ai-advisor", icon: Sparkles },
   { title: "Income", href: "/income", icon: TrendingUp },
   { title: "Expenses", href: "/expenses", icon: TrendingDown },
   { title: "Categories", href: "/categories", icon: Tags },
@@ -82,6 +85,7 @@ const secondaryNavigation = [
 
 const routeTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
+  "/ai-advisor": "AI Advisor",
   "/income": "Income",
   "/expenses": "Expenses",
   "/categories": "Categories",

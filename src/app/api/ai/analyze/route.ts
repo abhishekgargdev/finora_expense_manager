@@ -28,9 +28,15 @@ export async function POST(request: NextRequest) {
 
     // 2. Parse request body
     let userMessage = "";
+    let includeIncome = true;
+    let includeExpenses = true;
+    let includeInvestments = true;
     try {
       const body = await request.json();
       userMessage = typeof body.userMessage === "string" ? body.userMessage.trim() : "";
+      includeIncome = body.includeIncome !== false;
+      includeExpenses = body.includeExpenses !== false;
+      includeInvestments = body.includeInvestments !== false;
     } catch {
       // Body is optional or empty
     }
@@ -38,11 +44,34 @@ export async function POST(request: NextRequest) {
     // 3. Fetch User's Financial Data
     const financialData = await getFinancialDataForAI(userId);
 
+    // Filter financialData based on preferences
+    const filteredData: Record<string, any> = {
+      summary: {
+        netSavings: financialData.summary.netSavings,
+        savingsRatePercentage: financialData.summary.savingsRatePercentage,
+        bankBalance: financialData.summary.bankBalance,
+        cashBalance: financialData.summary.cashBalance,
+      }
+    };
+
+    if (includeIncome) {
+      filteredData.summary.totalIncome = financialData.summary.totalIncome;
+      filteredData.incomeRecords = financialData.incomeRecords;
+    }
+    if (includeExpenses) {
+      filteredData.summary.totalExpenses = financialData.summary.totalExpenses;
+      filteredData.expenseSummary = financialData.expenseSummary;
+    }
+    if (includeInvestments) {
+      filteredData.summary.totalInvested = financialData.summary.totalInvested;
+      filteredData.investmentRecords = financialData.investmentRecords;
+    }
+
     // 4. Construct user prompt with context data
     const userPrompt = `Below is my financial data (including incomes, expenses, and investments):
 
 \`\`\`json
-${JSON.stringify(financialData, null, 2)}
+${JSON.stringify(filteredData, null, 2)}
 \`\`\`
 
 ${
