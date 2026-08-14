@@ -5,7 +5,7 @@ import { exchangeCodeForTokens } from "@/lib/google-sheets";
 import { calculateNextSyncAt } from "@/lib/sync-schedule";
 
 export async function GET(request: NextRequest) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const appUrl = request.nextUrl.origin;
   const settingsUrl = `${appUrl}/settings?google=connected`;
 
   try {

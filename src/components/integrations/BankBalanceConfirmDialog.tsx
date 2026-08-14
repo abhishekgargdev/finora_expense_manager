@@ -56,7 +56,10 @@ export default function BankBalanceConfirmDialog({
         setData(payload);
         setBalances(
           Object.fromEntries(
-            payload.accounts.map((account: BankAccount) => [account.id, String(account.currentBalance)])
+            payload.accounts.map((account: BankAccount) => [
+              account.id,
+              account.currentBalance.toFixed(2),
+            ])
           )
         );
       } catch (error) {
@@ -97,7 +100,7 @@ export default function BankBalanceConfirmDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="sm:max-w-2xl w-full">
         <DialogHeader>
           <DialogTitle>Confirm bank balances before sync</DialogTitle>
           <DialogDescription>
@@ -115,24 +118,38 @@ export default function BankBalanceConfirmDialog({
                 No bank accounts found. You can still continue if you only want to sync expenses, income, and lending.
               </p>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-3 max-h-[45vh] overflow-y-auto pr-2 custom-scrollbar">
                 {data.accounts.map((account) => (
-                  <div key={account.id} className="rounded-xl border p-4">
+                  <div key={account.id} className="rounded-xl border bg-card p-4 transition-colors hover:bg-muted/10">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <p className="font-medium">
-                          {account.bankName}
-                          {account.last4Digits ? ` •••• ${account.last4Digits}` : ""}
-                        </p>
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-heading font-semibold text-foreground">
+                            {account.bankName}
+                          </p>
+                          {account.last4Digits ? (
+                            <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded font-mono font-medium">
+                              •••• {account.last4Digits}
+                            </span>
+                          ) : null}
+                        </div>
                         {account.accountName ? (
-                          <p className="text-sm text-muted-foreground">{account.accountName}</p>
+                          <p className="text-xs text-muted-foreground font-medium">{account.accountName}</p>
                         ) : null}
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          App balance: <MoneyText value={account.currentBalance} />
+                        <p className="text-sm text-muted-foreground mt-1">
+                          App balance:{" "}
+                          <span className="font-semibold text-foreground money">
+                            ₹{account.currentBalance.toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                          </span>
                         </p>
                       </div>
-                      <div className="min-w-40 space-y-1">
-                        <Label htmlFor={`balance-${account.id}`}>Your bank balance</Label>
+                      <div className="w-full sm:w-48 space-y-1 shrink-0">
+                        <Label htmlFor={`balance-${account.id}`} className="text-xs font-semibold text-muted-foreground">
+                          Your bank balance
+                        </Label>
                         <Input
                           id={`balance-${account.id}`}
                           type="number"
@@ -141,6 +158,7 @@ export default function BankBalanceConfirmDialog({
                           onChange={(event) =>
                             setBalances((current) => ({ ...current, [account.id]: event.target.value }))
                           }
+                          className="h-9 font-mono text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
                       </div>
                     </div>
@@ -149,13 +167,25 @@ export default function BankBalanceConfirmDialog({
               </div>
             )}
 
-            <div className="rounded-xl bg-muted/40 p-4 text-sm">
-              <p>
-                Total bank balance in app: <MoneyText value={data.totalBankBalance} />
-              </p>
-              <p className="mt-1 text-muted-foreground">
-                Cash wallet: <MoneyText value={data.cashBalance} />
-              </p>
+            <div className="rounded-xl bg-muted/40 p-4 text-sm border space-y-1">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Total bank balance in app:</span>
+                <span className="font-semibold text-foreground money">
+                  ₹{data.totalBankBalance.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Cash wallet:</span>
+                <span className="font-semibold text-foreground money">
+                  ₹{data.cashBalance.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </span>
+              </div>
             </div>
           </div>
         ) : null}
