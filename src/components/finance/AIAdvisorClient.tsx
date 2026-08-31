@@ -268,7 +268,7 @@ export default function AIAdvisorClient() {
         <div>
           <div className="flex items-center gap-2 text-primary font-medium text-sm">
             <Sparkles className="size-4 animate-pulse" />
-            <span>Powered by Gemini 1.5 Flash</span>
+            <span>Powered by Gemini & NVIDIA AI Chain</span>
           </div>
           <h2 className="font-heading text-2xl font-semibold mt-1">AI Financial Advisor</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
@@ -451,7 +451,7 @@ export default function AIAdvisorClient() {
                           <Sparkles className="absolute -top-1.5 -right-1.5 size-5 text-primary animate-bounce" />
                         </div>
                         <div>
-                          <h4 className="font-heading text-sm font-semibold">Gemini is Auditing Your Ledger...</h4>
+                          <h4 className="font-heading text-sm font-semibold">AI Chain is Auditing Your Ledger...</h4>
                           <p className="text-xs text-muted-foreground max-w-sm mt-1">
                             We are compiling your category ratios, checking saving patterns, and structuring a personalized analysis.
                           </p>

@@ -1,9 +1,19 @@
 /**
- * Gemini AI Service with API Key Rotation
+ * AI Service with API Key Rotation and Sequential Chain Generation (Gemini & NVIDIA)
  */
 
-function getApiKeys(): string[] {
-  const keys = [
+interface ActiveKey {
+  provider: "gemini" | "nvidia";
+  key: string;
+  model: string;
+}
+
+function getActiveKeys(): ActiveKey[] {
+  const activeKeys: ActiveKey[] = [];
+
+  // 1. Load Gemini Keys
+  const geminiModel = process.env.GEMINI_MODEL || "gemini-flash-latest";
+  const geminiKeys = [
     process.env.GEMINI_API_KEY_1,
     process.env.GEMINI_API_KEY_2,
     process.env.GEMINI_API_KEY_3,
@@ -15,11 +25,37 @@ function getApiKeys(): string[] {
     .filter(Boolean) as string[];
 
   // Fallback to standard key if none of the numbered keys are set
-  if (keys.length === 0 && process.env.GEMINI_API_KEY) {
-    keys.push(process.env.GEMINI_API_KEY.trim());
+  if (geminiKeys.length === 0 && process.env.GEMINI_API_KEY) {
+    geminiKeys.push(process.env.GEMINI_API_KEY.trim());
   }
 
-  return keys;
+  for (const key of geminiKeys) {
+    activeKeys.push({ provider: "gemini", key, model: geminiModel });
+  }
+
+  // 2. Load NVIDIA Keys
+  const nvidiaModel = process.env.NVIDIA_MODEL || "nvidia/nemotron-3-ultra-550b";
+  const nvidiaKeys = [
+    process.env.NVIDIA_API_KEY_1,
+    process.env.NVIDIA_API_KEY_2,
+    process.env.NVIDIA_API_KEY_3,
+    process.env.NVIDIA_API_KEY_4,
+    process.env.NVIDIA_API_KEY_5,
+    process.env.NVIDIA_API_KEY_6,
+  ]
+    .map((k) => k?.trim())
+    .filter(Boolean) as string[];
+
+  // Fallback to standard key if none of the numbered keys are set
+  if (nvidiaKeys.length === 0 && process.env.NVIDIA_API_KEY) {
+    nvidiaKeys.push(process.env.NVIDIA_API_KEY.trim());
+  }
+
+  for (const key of nvidiaKeys) {
+    activeKeys.push({ provider: "nvidia", key, model: nvidiaModel });
+  }
+
+  return activeKeys;
 }
 
 export interface GenerateOptions {
@@ -28,111 +64,190 @@ export interface GenerateOptions {
   maxTokens?: number;
 }
 
+async function callGemini(
+  apiKey: string,
+  model: string,
+  originalPrompt: string,
+  cumulativeResponse: string,
+  systemPrompt?: string,
+  temperature?: number,
+  maxTokens?: number
+): Promise<string> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+  const contents: any[] = [];
+  if (!cumulativeResponse) {
+    contents.push({
+      role: "user",
+      parts: [{ text: originalPrompt }],
+    });
+  } else {
+    contents.push({
+      role: "user",
+      parts: [{ text: originalPrompt }],
+    });
+    contents.push({
+      role: "model",
+      parts: [{ text: cumulativeResponse }],
+    });
+    contents.push({
+      role: "user",
+      parts: [{
+        text: "Continue the analysis from where you left off. Do not repeat the previous parts. Provide more deep insights, additional checklist items, or further analysis based on the data. Start directly with the continuation."
+      }],
+    });
+  }
+
+  const body: any = {
+    contents,
+    generationConfig: {
+      temperature,
+      maxOutputTokens: maxTokens,
+    },
+  };
+
+  if (systemPrompt) {
+    body.systemInstruction = {
+      parts: [{ text: systemPrompt }],
+    };
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorMsg = data?.error?.message || response.statusText || "Unknown Gemini API error";
+    throw new Error(`[${response.status}] ${errorMsg}`);
+  }
+
+  const candidates = data?.candidates || [];
+  if (candidates.length === 0 || !candidates[0]?.content?.parts?.[0]?.text) {
+    throw new Error("Invalid response format received from Gemini API (empty candidates).");
+  }
+
+  return candidates[0].content.parts[0].text;
+}
+
+async function callNvidia(
+  apiKey: string,
+  model: string,
+  originalPrompt: string,
+  cumulativeResponse: string,
+  systemPrompt?: string,
+  temperature?: number,
+  maxTokens?: number
+): Promise<string> {
+  const url = "https://integrate.api.nvidia.com/v1/chat/completions";
+
+  const messages: any[] = [];
+  if (systemPrompt) {
+    messages.push({ role: "system", content: systemPrompt });
+  }
+
+  if (!cumulativeResponse) {
+    messages.push({ role: "user", content: originalPrompt });
+  } else {
+    messages.push({ role: "user", content: originalPrompt });
+    messages.push({ role: "assistant", content: cumulativeResponse });
+    messages.push({
+      role: "user",
+      content: "Continue the analysis from where you left off. Do not repeat the previous parts. Provide more deep insights, additional checklist items, or further analysis based on the data. Start directly with the continuation."
+    });
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      temperature,
+      max_tokens: maxTokens,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorMsg = data?.error?.message || response.statusText || "Unknown NVIDIA API error";
+    throw new Error(`[${response.status}] ${errorMsg}`);
+  }
+
+  const choices = data?.choices || [];
+  if (choices.length === 0 || !choices[0]?.message?.content) {
+    throw new Error("Invalid response format received from NVIDIA API (empty choices).");
+  }
+
+  return choices[0].message.content;
+}
+
 /**
- * Calls the Gemini API to generate content.
- * Automatically rotates between configured API keys if rate-limited (HTTP 429) or on transient server errors.
+ * Calls the active API keys sequentially, forwarding previous context to compile a comprehensive analysis.
+ * Automatically rotates and skips keys that fail.
  */
 export async function generateContent(
   prompt: string,
   options: GenerateOptions = {}
 ): Promise<string> {
-  const keys = getApiKeys();
-  if (keys.length === 0) {
+  const activeKeys = getActiveKeys();
+  if (activeKeys.length === 0) {
     throw new Error(
-      "No Gemini API keys configured. Please define GEMINI_API_KEY_1 through GEMINI_API_KEY_6 in .env.local."
+      "No active Gemini or NVIDIA API keys configured. Please define GEMINI_API_KEY_x or NVIDIA_API_KEY_x in .env.local."
     );
   }
 
-  const model = process.env.GEMINI_MODEL || "gemini-flash-latest";
   const { systemPrompt, temperature = 0.4, maxTokens = 2048 } = options;
 
+  let cumulativeResponse = "";
   let lastError: Error | null = null;
+  let successfulCalls = 0;
 
-  // Try each key sequentially
-  for (let i = 0; i < keys.length; i++) {
-    const apiKey = keys[i];
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
-    // Construct request body
-    const body: {
-      contents: Array<{
-        role: string;
-        parts: Array<{ text: string }>;
-      }>;
-      generationConfig: {
-        temperature: number;
-        maxOutputTokens: number;
-      };
-      systemInstruction?: {
-        parts: Array<{ text: string }>;
-      };
-    } = {
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: prompt }],
-        },
-      ],
-      generationConfig: {
-        temperature,
-        maxOutputTokens: maxTokens,
-      },
-    };
-
-    if (systemPrompt) {
-      body.systemInstruction = {
-        parts: [{ text: systemPrompt }],
-      };
-    }
+  // Execute sequentially through all active keys
+  for (let i = 0; i < activeKeys.length; i++) {
+    const { provider, key, model } = activeKeys[i];
+    const keyLabel = `${provider.toUpperCase()} Key index ${i + 1}`;
 
     try {
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      });
+      console.log(`Starting generation with ${keyLabel} using model: ${model}...`);
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        // If we get rate-limited (429) or transient error (5xx), we try the next key
-        const statusCode = response.status;
-        const errorMessage = data?.error?.message || response.statusText || "Unknown error";
-        
-        console.warn(
-          `Gemini API request failed using key index ${i + 1} with Status ${statusCode}: ${errorMessage}. Rotating key...`
-        );
-        
-        lastError = new Error(`Gemini API (Key index ${i + 1}): [${statusCode}] ${errorMessage}`);
-        
-        if (statusCode === 429 || statusCode >= 500) {
-          continue; // Rotate to next key
-        } else {
-          // Non-retryable error (e.g. 400 Bad Request, 403 Invalid API Key, etc.)
-          throw lastError;
-        }
-      }
-
-      // Extract generated text from response
-      const candidates = data?.candidates || [];
-      if (candidates.length === 0 || !candidates[0]?.content?.parts?.[0]?.text) {
-        throw new Error("Invalid response format received from Gemini API (empty candidates).");
-      }
-
-      return candidates[0].content.parts[0].text;
-    } catch (error) {
-      if (error instanceof Error) {
-        lastError = error;
+      let chunk = "";
+      if (provider === "gemini") {
+        chunk = await callGemini(key, model, prompt, cumulativeResponse, systemPrompt, temperature, maxTokens);
       } else {
-        lastError = new Error(String(error));
+        chunk = await callNvidia(key, model, prompt, cumulativeResponse, systemPrompt, temperature, maxTokens);
       }
-      
-      console.warn(`Exception occurred with key index ${i + 1}: ${lastError.message}. Rotating key...`);
+
+      if (chunk && chunk.trim()) {
+        const trimmedChunk = chunk.trim();
+        if (cumulativeResponse) {
+          cumulativeResponse += "\n\n" + trimmedChunk;
+        } else {
+          cumulativeResponse = trimmedChunk;
+        }
+        successfulCalls++;
+        console.log(`Successfully generated chunk with ${keyLabel}.`);
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.warn(`Error using ${keyLabel}: ${errorMsg}. Skipping/Rotating key...`);
+      lastError = error instanceof Error ? error : new Error(errorMsg);
     }
   }
 
-  // If we loop through all keys and fail
-  throw new Error(`All Gemini API keys failed. Last error: ${lastError?.message}`);
+  // If we couldn't get a response from any key
+  if (successfulCalls === 0) {
+    throw new Error(`All configured AI API keys failed. Last error: ${lastError?.message}`);
+  }
+
+  return cumulativeResponse;
 }
