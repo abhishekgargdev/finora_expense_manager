@@ -172,13 +172,18 @@ export default function BankAccountsPage() {
     debit: { label: "Debits", color: "var(--expense)" },
   } satisfies ChartConfig;
 
+  const [loadingLedger, setLoadingLedger] = React.useState(false);
+
   async function openAccount(account: BankAccount) {
     setSelected(account);
+    setLoadingLedger(true);
     try {
       const payload = await read(fetch(`/api/bank-accounts/${account.id}/transactions`));
       setLedger(payload.transactions);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to load transaction history.");
+    } finally {
+      setLoadingLedger(false);
     }
   }
   function startCreate() {
@@ -376,7 +381,7 @@ export default function BankAccountsPage() {
           setForm={setTransactionForm}
           onSubmit={submitTransaction}
         />
-        <LoaderOverlay show={isMutating} label="Updating account..." />
+        <LoaderOverlay show={isMutating || loadingLedger} label={loadingLedger ? "Loading ledger transactions..." : "Updating account..."} />
       </div>
     );
   return (
@@ -524,7 +529,7 @@ export default function BankAccountsPage() {
         description={`Are you sure you want to delete ${accountToDelete?.accountName || accountToDelete?.bankName}? This will permanently remove the account and all of its associated transactions.`}
         onConfirm={deleteAccount}
       />
-      <LoaderOverlay show={isMutating} label="Updating bank accounts..." />
+      <LoaderOverlay show={isMutating || loadingLedger} label={loadingLedger ? "Loading ledger transactions..." : "Updating bank accounts..."} />
     </div>
   );
 }

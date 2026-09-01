@@ -90,7 +90,8 @@ export function parseInvestment(input: InvestmentInput, partial = false) {
     values.accountOrPolicyNumber = text(input.accountOrPolicyNumber) || undefined;
 
   if (input.bankAccount !== undefined) {
-    values.bankAccount = input.bankAccount ? String(input.bankAccount) : null;
+    const val = text(input.bankAccount);
+    values.bankAccount = val && val !== "none" ? val : null;
   }
 
   if (input.expenseRef !== undefined) {

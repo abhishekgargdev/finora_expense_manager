@@ -21,6 +21,7 @@ async function updateInvestment(request: NextRequest, context: RouteContext<"/ap
     const { id } = await context.params;
     const investment = await getInvestment(id, userId);
 
+    const oldAmountInvested = investment.amountInvested || 0;
     const oldPrincipal = investment.principalAmount || 0;
     const oldBankAccount = investment.bankAccount?.toString();
     const oldExpenseRef = investment.expenseRef;
@@ -38,15 +39,21 @@ async function updateInvestment(request: NextRequest, context: RouteContext<"/ap
       parsed.currentValue = parsed.actualMaturityAmount;
     }
 
-    // Check if principal or bankAccount is changing for Lumpsum
-    if (investment.category === "Fixed-Tenure" && investment.investmentMode === "Lumpsum") {
-      const newPrincipal = parsed.principalAmount !== undefined ? parsed.principalAmount : oldPrincipal;
+    // Check if principal/amount or bankAccount is changing for Lumpsum or Market-Linked
+    const isFixedLumpsum = investment.category === "Fixed-Tenure" && investment.investmentMode === "Lumpsum";
+    const isMarketLinked = (investment.category ?? "Market-Linked") === "Market-Linked";
+
+    if (isFixedLumpsum || isMarketLinked) {
+      const newAmount = isMarketLinked
+        ? (parsed.amountInvested !== undefined ? parsed.amountInvested : oldAmountInvested)
+        : (parsed.principalAmount !== undefined ? parsed.principalAmount : oldPrincipal);
+      const oldAmount = isMarketLinked ? oldAmountInvested : oldPrincipal;
       const newBankAccount = parsed.bankAccount !== undefined ? parsed.bankAccount : oldBankAccount;
 
-      const principalChanged = newPrincipal !== oldPrincipal;
+      const amountChanged = newAmount !== oldAmount;
       const bankChanged = newBankAccount !== oldBankAccount;
 
-      if (principalChanged || bankChanged) {
+      if (amountChanged || bankChanged) {
         // Revert old expense and transaction if exists
         if (oldExpenseRef) {
           const oldExpense = await ExpenseModel.findById(oldExpenseRef);
@@ -62,29 +69,34 @@ async function updateInvestment(request: NextRequest, context: RouteContext<"/ap
         }
 
         // Create new expense and transaction if new bankAccount is selected
-        if (newBankAccount && newPrincipal > 0) {
+        if (newBankAccount && newAmount > 0) {
           const instName = parsed.institution !== undefined ? parsed.institution : investment.institution;
           const nameStr = parsed.name !== undefined ? parsed.name : investment.name;
           const sDate = parsed.startDate !== undefined ? parsed.startDate : investment.startDate;
+          const invDate = parsed.date !== undefined ? parsed.date : investment.date;
+
+          const desc = isMarketLinked
+            ? `Investment: ${nameStr || investment.type}${parsed.note !== undefined ? (parsed.note ? ` · ${parsed.note}` : "") : (investment.note ? ` · ${investment.note}` : "")}`
+            : `Lumpsum Investment: ${nameStr || investment.type} at ${instName}`;
 
           const expense = await ExpenseModel.create({
             user: userId,
-            amount: newPrincipal,
+            amount: newAmount,
             category: "Investment",
-            source: instName || "Fixed Deposit",
-            date: sDate || investment.date,
+            source: isMarketLinked ? (nameStr || investment.type) : (instName || "Fixed Deposit"),
+            date: isMarketLinked ? (invDate || investment.date) : (sDate || investment.date),
             paymentMode: "Bank Transfer",
             bankAccount: newBankAccount,
-            description: `Lumpsum Investment: ${nameStr || investment.type} at ${instName}`,
+            description: desc,
           });
 
           await BankTransactionModel.recordTransaction({
             user: userId,
             bankAccount: newBankAccount,
             type: "Debit",
-            amount: newPrincipal,
-            description: `Lumpsum Investment: ${nameStr || investment.type} at ${instName}`,
-            date: sDate || investment.date,
+            amount: newAmount,
+            description: desc,
+            date: isMarketLinked ? (invDate || investment.date) : (sDate || investment.date),
             source: "Expense",
             refId: expense._id,
           });

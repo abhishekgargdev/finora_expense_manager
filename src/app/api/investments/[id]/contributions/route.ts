@@ -65,16 +65,20 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     let expenseRef = null;
 
     if (bankAccount) {
+      const instStr = investment.institution ? ` at ${investment.institution}` : "";
+      const sourceStr = investment.institution || investment.name || investment.type || "Investment Boost";
+      const descStr = `Boost: ${investment.name || investment.type}${instStr}${body.note ? ` · ${body.note}` : ""}`;
+
       // 1. Create an Expense entry
       const expense = await ExpenseModel.create({
         user: userId,
         amount: amount,
         category: "Investment",
-        source: investment.institution || "Investment Boost",
+        source: sourceStr,
         date: date,
         paymentMode: "Bank Transfer",
         bankAccount,
-        description: `Boost: ${investment.name || investment.type} at ${investment.institution || ""}${body.note ? ` · ${body.note}` : ""}`,
+        description: descStr,
       });
 
       // 2. Record Debit BankTransaction
@@ -83,7 +87,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
         bankAccount,
         type: "Debit",
         amount: amount,
-        description: `Boost: ${investment.name || investment.type} at ${investment.institution || ""}${body.note ? ` · ${body.note}` : ""}`,
+        description: descStr,
         date: date,
         source: "Expense",
         refId: expense._id,

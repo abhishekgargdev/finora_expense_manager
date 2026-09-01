@@ -166,6 +166,51 @@ export async function POST(request: NextRequest) {
 
       investment.expenseRef = expense._id;
       await investment.save();
+    } else if (
+      (investment.category ?? "Market-Linked") === "Market-Linked" &&
+      investment.bankAccount &&
+      (investment.amountInvested ?? 0) > 0
+    ) {
+      const sourceName = investment.name || investment.type;
+      const desc = `Investment: ${sourceName}${investment.note ? ` · ${investment.note}` : ""}`;
+
+      const expense = await ExpenseModel.create({
+        user: userId,
+        amount: investment.amountInvested,
+        category: "Investment",
+        source: sourceName,
+        date: investment.date,
+        paymentMode: "Bank Transfer",
+        bankAccount: investment.bankAccount,
+        description: desc,
+      });
+
+      await BankTransactionModel.recordTransaction({
+        user: userId,
+        bankAccount: investment.bankAccount,
+        type: "Debit",
+        amount: investment.amountInvested,
+        description: desc,
+        date: investment.date,
+        source: "Expense",
+        refId: expense._id,
+      });
+
+      investment.expenseRef = expense._id;
+      await investment.save();
+
+      // Create initial contribution record
+      await InvestmentContributionModel.create({
+        user: userId,
+        investment: investment._id,
+        dueDate: investment.date,
+        paidDate: investment.date,
+        amount: investment.amountInvested,
+        status: "Paid",
+        bankAccount: investment.bankAccount,
+        expenseRef: expense._id,
+        note: investment.note || "Initial investment",
+      });
     }
 
     // Generate Recurring Contributions checklist

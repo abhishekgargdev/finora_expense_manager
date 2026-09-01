@@ -251,6 +251,7 @@ export default function CreditCardsPage() {
   }
   async function markPaid() {
     if (!selected || !payBill) return;
+    setDetailLoading(true);
     try {
       await read(
         fetch(`/api/credit-cards/${selected.id}/bills/${payBill.id}/pay`, {
@@ -264,6 +265,8 @@ export default function CreditCardsPage() {
       await openCard(selected);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to pay bill.");
+    } finally {
+      setDetailLoading(false);
     }
   }
   const [cardToDelete, setCardToDelete] = React.useState<CreditCard | null>(null);
@@ -633,7 +636,7 @@ export default function CreditCardsPage() {
         description={`Are you sure you want to delete ${cardToDelete?.cardName}? This will permanently remove the card and all its transaction history.`}
         onConfirm={deleteCard}
       />
-      <LoaderOverlay show={mutating} label="Updating credit cards..." />
+      <LoaderOverlay show={mutating || detailLoading} label={detailLoading ? "Processing credit card..." : "Updating credit cards..."} />
     </div>
   );
 }

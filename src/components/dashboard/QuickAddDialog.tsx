@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PaymentSourceSelect from "@/components/finance/PaymentSourceSelect";
+import LoaderOverlay from "@/components/loader/LoaderOverlay";
 import { cn } from "@/lib/utils";
 import {
   parsePaymentSource,
@@ -278,6 +279,7 @@ export default function QuickAddDialog({ open, onOpenChange, onSuccess }: Props)
             amountInvested: numAmount,
             currentValue: currentValue ? Number(currentValue) : numAmount,
             date: isoDate,
+            bankAccount: bankAccount && bankAccount !== "none" ? bankAccount : undefined,
             note: note.trim() || undefined,
           };
         } else {
@@ -671,6 +673,30 @@ export default function QuickAddDialog({ open, onOpenChange, onSuccess }: Props)
                       </Popover>
                     </div>
                   </div>
+
+                  <div className="grid gap-2">
+                    <Label>Source Bank Account (Debit Investment)</Label>
+                    <Select value={bankAccount} onValueChange={(val) => setBankAccount(val ?? "")}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Choose an account (optional)">
+                          {bankAccount && bankAccount !== "none"
+                            ? getBankAccountLabel(bankAccounts.find((a) => a.id === bankAccount)) +
+                              (bankAccounts.find((a) => a.id === bankAccount)?.last4Digits
+                                ? ` · ${bankAccounts.find((a) => a.id === bankAccount)?.last4Digits}`
+                                : "")
+                            : "Choose an account (optional)"}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Choose an account (optional)</SelectItem>
+                        {bankAccounts.map((acc) => (
+                          <SelectItem key={acc.id} value={acc.id}>
+                            {getBankAccountLabel(acc)} {acc.last4Digits ? `· ${acc.last4Digits}` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </>
               ) : (
                 <>
@@ -1034,6 +1060,7 @@ export default function QuickAddDialog({ open, onOpenChange, onSuccess }: Props)
             </Button>
           </DialogFooter>
         </form>
+        <LoaderOverlay show={loading} label="Saving entry..." />
       </DialogContent>
     </Dialog>
   );

@@ -385,6 +385,7 @@ export default function InvestmentsPage() {
       payload.amountInvested = amountInvested;
       payload.currentValue = currentValue;
       payload.date = new Date(`${form.date}T12:00:00`).toISOString();
+      payload.bankAccount = form.bankAccount || undefined;
     } else {
       const rate = Number(form.interestRate);
       const tenureValue = Number(form.tenureValue);
@@ -737,63 +738,21 @@ export default function InvestmentsPage() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {paginatedMarketLinked.map((item) => {
-                              const difference = item.currentValue - item.amountInvested;
-                              return (
-                                <TableRow key={item.id}>
-                                  <TableCell className="font-semibold text-xs sm:text-sm">{item.type}</TableCell>
-                                  <TableCell>
-                                    <div className="font-medium text-xs sm:text-sm">{item.name || "Untitled"}</div>
-                                    {item.note && <div className="max-w-40 truncate text-xs text-muted-foreground">{item.note}</div>}
-                                  </TableCell>
-                                  <TableCell className="text-xs sm:text-sm">{format(new Date(item.date), "dd MMM yyyy")}</TableCell>
-                                  <TableCell className="text-right text-xs sm:text-sm">
-                                    <MoneyText value={item.amountInvested} />
-                                  </TableCell>
-                                  <TableCell className="text-right text-xs sm:text-sm">
-                                    <MoneyText value={item.currentValue} />
-                                  </TableCell>
-                                  <TableCell className="text-right text-xs sm:text-sm">
-                                    <MoneyText value={difference} variant={difference >= 0 ? "positive" : "negative"} />
-                                  </TableCell>
-                                  <TableCell>
-                                    <div className="flex gap-1">
-                                      <Tooltip>
-                                        <TooltipTrigger
-                                          render={
-                                            <Button
-                                              variant="ghost"
-                                              size="icon-sm"
-                                              onClick={() => openEdit(item)}
-                                              aria-label="Edit"
-                                            />
-                                          }
-                                        >
-                                          <Pencil />
-                                        </TooltipTrigger>
-                                        <TooltipContent>Edit</TooltipContent>
-                                      </Tooltip>
-                                      <Tooltip>
-                                        <TooltipTrigger
-                                          render={
-                                            <Button
-                                              variant="ghost"
-                                              size="icon-sm"
-                                              className="text-destructive hover:text-destructive"
-                                              onClick={() => setItemToDelete(item)}
-                                              aria-label="Delete"
-                                            />
-                                          }
-                                        >
-                                          <Trash2 />
-                                        </TooltipTrigger>
-                                        <TooltipContent>Delete</TooltipContent>
-                                      </Tooltip>
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            })}
+                            {paginatedMarketLinked.map((item) => (
+                              <MarketLinkedTableRow
+                                key={item.id}
+                                item={item}
+                                onEdit={openEdit}
+                                onDelete={setItemToDelete}
+                                onBoost={openBoost}
+                                onExpand={toggleExpand}
+                                isExpanded={!!expandedInvestments[item.id]}
+                                contributions={contributionsMap[item.id] || []}
+                                isLoadingContribs={!!loadingContributions[item.id]}
+                                onRevertPaid={setContributionToRevert}
+                                bankAccounts={bankAccounts}
+                              />
+                            ))}
                           </TableBody>
                         </Table>
                       </div>
@@ -898,63 +857,21 @@ export default function InvestmentsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {paginatedMarketLinked.map((item) => {
-                        const difference = item.currentValue - item.amountInvested;
-                        return (
-                          <TableRow key={item.id}>
-                            <TableCell className="font-semibold text-xs sm:text-sm">{item.type}</TableCell>
-                            <TableCell>
-                              <div className="font-medium text-xs sm:text-sm">{item.name || "Untitled"}</div>
-                              {item.note && <div className="max-w-40 truncate text-xs text-muted-foreground">{item.note}</div>}
-                            </TableCell>
-                            <TableCell className="text-xs sm:text-sm">{format(new Date(item.date), "dd MMM yyyy")}</TableCell>
-                            <TableCell className="text-right text-xs sm:text-sm">
-                              <MoneyText value={item.amountInvested} />
-                            </TableCell>
-                            <TableCell className="text-right text-xs sm:text-sm">
-                              <MoneyText value={item.currentValue} />
-                            </TableCell>
-                            <TableCell className="text-right text-xs sm:text-sm">
-                              <MoneyText value={difference} variant={difference >= 0 ? "positive" : "negative"} />
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex gap-1">
-                                <Tooltip>
-                                  <TooltipTrigger
-                                    render={
-                                      <Button
-                                        variant="ghost"
-                                        size="icon-sm"
-                                        onClick={() => openEdit(item)}
-                                        aria-label="Edit"
-                                      />
-                                    }
-                                  >
-                                    <Pencil />
-                                  </TooltipTrigger>
-                                  <TooltipContent>Edit</TooltipContent>
-                                </Tooltip>
-                                <Tooltip>
-                                  <TooltipTrigger
-                                    render={
-                                      <Button
-                                        variant="ghost"
-                                        size="icon-sm"
-                                        className="text-destructive hover:text-destructive"
-                                        onClick={() => setItemToDelete(item)}
-                                        aria-label="Delete"
-                                      />
-                                    }
-                                  >
-                                    <Trash2 />
-                                  </TooltipTrigger>
-                                  <TooltipContent>Delete</TooltipContent>
-                                </Tooltip>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
+                      {paginatedMarketLinked.map((item) => (
+                        <MarketLinkedTableRow
+                          key={item.id}
+                          item={item}
+                          onEdit={openEdit}
+                          onDelete={setItemToDelete}
+                          onBoost={openBoost}
+                          onExpand={toggleExpand}
+                          isExpanded={!!expandedInvestments[item.id]}
+                          contributions={contributionsMap[item.id] || []}
+                          isLoadingContribs={!!loadingContributions[item.id]}
+                          onRevertPaid={setContributionToRevert}
+                          bankAccounts={bankAccounts}
+                        />
+                      ))}
                     </TableBody>
                   </Table>
                 </div>
@@ -1126,23 +1043,40 @@ export default function InvestmentsPage() {
                   </div>
                 </div>
 
-                <div className="grid gap-2">
-                  <Label>Purchase Date</Label>
-                  <Popover>
-                    <PopoverTrigger
-                      render={<Button variant="outline" className="w-full justify-start font-normal" />}
-                    >
-                      <CalendarDays className="mr-2 h-4 w-4" />
-                      {format(new Date(`${form.date}T12:00:00`), "dd MMM yyyy")}
-                    </PopoverTrigger>
-                    <PopoverContent align="start" className="w-auto p-0" disablePortal={true}>
-                      <Calendar
-                        mode="single"
-                        selected={new Date(`${form.date}T12:00:00`)}
-                        onSelect={(date) => date && change("date", format(date, "yyyy-MM-dd"))}
-                      />
-                    </PopoverContent>
-                  </Popover>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-2">
+                    <Label>Purchase Date</Label>
+                    <Popover>
+                      <PopoverTrigger
+                        render={<Button variant="outline" className="w-full justify-start font-normal" />}
+                      >
+                        <CalendarDays className="mr-2 h-4 w-4" />
+                        {format(new Date(`${form.date}T12:00:00`), "dd MMM yyyy")}
+                      </PopoverTrigger>
+                      <PopoverContent align="start" className="w-auto p-0" disablePortal={true}>
+                        <Calendar
+                          mode="single"
+                          selected={new Date(`${form.date}T12:00:00`)}
+                          onSelect={(date) => date && change("date", format(date, "yyyy-MM-dd"))}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Source Bank Account (Debit Investment)</Label>
+                    <Select value={form.bankAccount} onValueChange={(val) => change("bankAccount", val ?? "")}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select account (Optional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {bankAccounts.map((account) => (
+                          <SelectItem key={account.id} value={account.id}>
+                            {account.accountName ? `${account.bankName} (${account.accountName})` : account.bankName} {account.last4Digits ? `(***${account.last4Digits})` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -1952,5 +1886,182 @@ function FixedTenureCard({
         </div>
       )}
     </div>
+  );
+}
+
+// LOCAL COMPONENT: MARKET LINKED TABLE ROW WITH CONTRIBUTIONS
+type MarketRowProps = {
+  item: InvestmentEntry;
+  onEdit: (item: InvestmentEntry) => void;
+  onDelete: (item: InvestmentEntry) => void;
+  onBoost: (item: InvestmentEntry) => void;
+  onExpand: (id: string) => void;
+  isExpanded: boolean;
+  contributions: ContributionEntry[];
+  isLoadingContribs: boolean;
+  onRevertPaid: (c: ContributionEntry) => void;
+  bankAccounts: { id: string; bankName: string; accountName?: string; last4Digits?: string }[];
+};
+
+function MarketLinkedTableRow({
+  item,
+  onEdit,
+  onDelete,
+  onBoost,
+  onExpand,
+  isExpanded,
+  contributions,
+  isLoadingContribs,
+  onRevertPaid,
+  bankAccounts,
+}: MarketRowProps) {
+  const difference = item.currentValue - item.amountInvested;
+
+  const getBankName = (bankAccountId?: string | null) => {
+    if (!bankAccountId) return null;
+    const acc = bankAccounts.find((b) => b.id === bankAccountId);
+    if (!acc) return "Bank Account";
+    return acc.accountName ? `${acc.bankName} (${acc.accountName})` : acc.bankName;
+  };
+
+  return (
+    <React.Fragment>
+      <TableRow className="group">
+        <TableCell className="font-semibold text-xs sm:text-sm">{item.type}</TableCell>
+        <TableCell>
+          <div className="font-medium text-xs sm:text-sm">{item.name || "Untitled"}</div>
+          {item.note && <div className="max-w-40 truncate text-xs text-muted-foreground">{item.note}</div>}
+        </TableCell>
+        <TableCell className="text-xs sm:text-sm">{format(new Date(item.date), "dd MMM yyyy")}</TableCell>
+        <TableCell className="text-right text-xs sm:text-sm">
+          <MoneyText value={item.amountInvested} />
+        </TableCell>
+        <TableCell className="text-right text-xs sm:text-sm">
+          <MoneyText value={item.currentValue} />
+        </TableCell>
+        <TableCell className="text-right text-xs sm:text-sm">
+          <MoneyText value={difference} variant={difference >= 0 ? "positive" : "negative"} />
+        </TableCell>
+        <TableCell>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="xs"
+              className="h-7 px-2 border-primary/30 text-primary hover:bg-primary/5 flex items-center gap-1 text-[11px] font-semibold"
+              onClick={() => onBoost(item)}
+            >
+              <Zap className="size-3 fill-primary/10" /> Top Up
+            </Button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => onExpand(item.id)}
+                    aria-label="View History"
+                  />
+                }
+              >
+                {isExpanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+              </TooltipTrigger>
+              <TooltipContent>Payment History</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => onEdit(item)}
+                    aria-label="Edit"
+                  />
+                }
+              >
+                <Pencil className="size-3.5" />
+              </TooltipTrigger>
+              <TooltipContent>Edit</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => onDelete(item)}
+                    aria-label="Delete"
+                  />
+                }
+              >
+                <Trash2 className="size-3.5" />
+              </TooltipTrigger>
+              <TooltipContent>Delete</TooltipContent>
+            </Tooltip>
+          </div>
+        </TableCell>
+      </TableRow>
+      {isExpanded && (
+        <TableRow className="bg-muted/30 hover:bg-muted/30">
+          <TableCell colSpan={7} className="p-3">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs font-semibold">
+                <span className="flex items-center gap-1.5 text-foreground">
+                  <CheckCircle className="size-3.5 text-emerald-500" />
+                  Payment & Contribution History
+                </span>
+                <span className="text-muted-foreground font-normal text-[11px]">
+                  ({contributions.length} recorded)
+                </span>
+              </div>
+              {isLoadingContribs ? (
+                <div className="py-2 text-center text-xs text-muted-foreground">Loading payment history...</div>
+              ) : contributions.length === 0 ? (
+                <div className="py-2 text-center text-xs text-muted-foreground">
+                  No payment entries logged yet. Click &quot;Top Up&quot; to add a contribution.
+                </div>
+              ) : (
+                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                  {contributions.map((c) => {
+                    const bankLabel = getBankName(c.bankAccount);
+                    return (
+                      <div
+                        key={c.id}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 rounded-md border border-border/60 bg-background text-xs"
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-medium text-muted-foreground">
+                            {format(new Date(c.dueDate), "dd MMM yyyy")}
+                          </span>
+                          <span className="font-bold text-foreground">₹{c.amount.toLocaleString()}</span>
+                          {bankLabel && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-muted font-medium text-muted-foreground">
+                              {bankLabel}
+                            </span>
+                          )}
+                          {c.note && <span className="text-muted-foreground text-[11px]">· {c.note}</span>}
+                        </div>
+                        <div className="self-end sm:self-auto">
+                          {c.status === "Paid" && (
+                            <Button
+                              variant="ghost"
+                              size="xs"
+                              className="text-muted-foreground hover:text-destructive h-6 px-2 text-[11px]"
+                              onClick={() => onRevertPaid(c)}
+                            >
+                              Revert
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </TableCell>
+        </TableRow>
+      )}
+    </React.Fragment>
   );
 }
