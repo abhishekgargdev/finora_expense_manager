@@ -34,7 +34,7 @@ function getActiveKeys(): ActiveKey[] {
   }
 
   // 2. Load NVIDIA Keys
-  const nvidiaModel = process.env.NVIDIA_MODEL || "nvidia/nemotron-3-ultra-550b";
+  const nvidiaModel = process.env.NVIDIA_MODEL || "meta/llama-3.2-11b-vision-instruct";
   const nvidiaKeys = [
     process.env.NVIDIA_API_KEY_1,
     process.env.NVIDIA_API_KEY_2,
@@ -158,10 +158,16 @@ async function callGemini(
     body: JSON.stringify(body),
   });
 
-  const data = await response.json();
+  const responseText = await response.text();
+  let data: any = null;
+  try {
+    data = JSON.parse(responseText);
+  } catch {
+    // Body is non-JSON text
+  }
 
   if (!response.ok) {
-    const errorMsg = data?.error?.message || response.statusText || "Unknown Gemini API error";
+    const errorMsg = data?.error?.message || data?.message || responseText.trim() || response.statusText || "Unknown Gemini API error";
     throw new Error(`[${response.status}] ${errorMsg}`);
   }
 
@@ -214,10 +220,16 @@ async function callNvidia(
     }),
   });
 
-  const data = await response.json();
+  const responseText = await response.text();
+  let data: any = null;
+  try {
+    data = JSON.parse(responseText);
+  } catch {
+    // Body is non-JSON text
+  }
 
   if (!response.ok) {
-    const errorMsg = data?.error?.message || response.statusText || "Unknown NVIDIA API error";
+    const errorMsg = data?.error?.message || data?.detail || data?.message || responseText.trim() || response.statusText || "Unknown NVIDIA API error";
     throw new Error(`[${response.status}] ${errorMsg}`);
   }
 

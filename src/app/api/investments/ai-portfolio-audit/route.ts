@@ -129,9 +129,16 @@ Evaluate overall portfolio allocation, calculate Health Score (0-100), top actio
       netReturnPercentage: Number(parsed.netReturnPercentage ?? overallReturnPercentage),
       totalInvested,
       totalCurrentValue,
-      portfolioSummary: parsed.portfolioSummary || "Your investment portfolio maintains a steady growth foundation across your holdings.",
+      portfolioSummary:
+        typeof parsed.portfolioSummary === "string"
+          ? parsed.portfolioSummary
+          : typeof parsed.portfolioSummary === "object" && parsed.portfolioSummary !== null
+          ? JSON.stringify(parsed.portfolioSummary)
+          : "Your investment portfolio maintains a steady growth foundation across your holdings.",
       diversificationRating: parsed.diversificationRating || "Well Balanced",
-      topActionables: Array.isArray(parsed.topActionables) ? parsed.topActionables : ["Rebalance underperforming funds into index funds.", "Continue regular SIPs in high-performing assets."],
+      topActionables: Array.isArray(parsed.topActionables)
+        ? parsed.topActionables
+        : ["Rebalance underperforming funds into index funds.", "Continue regular SIPs in high-performing assets."],
       holdingRecommendations: Array.isArray(parsed.holdingRecommendations) ? parsed.holdingRecommendations : [],
     };
 
