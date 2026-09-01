@@ -335,6 +335,7 @@ export default function InvestmentsPage() {
       name: string;
       recommendation: "CONTINUE" | "STOP" | "MONITOR";
       recommendationLabel: string;
+      oldCurrentValue?: number;
       estimatedCurrentValue: number;
       rationale: string;
     }[];
@@ -344,11 +345,16 @@ export default function InvestmentsPage() {
   const [portfolioAuditLoading, setPortfolioAuditLoading] = React.useState(false);
   const [portfolioAuditResult, setPortfolioAuditResult] = React.useState<PortfolioAuditData | null>(null);
   const [isUpdatingAllHoldings, setIsUpdatingAllHoldings] = React.useState(false);
+  const [updatingHoldingId, setUpdatingHoldingId] = React.useState<string | null>(null);
+  const [updatedHoldingIds, setUpdatedHoldingIds] = React.useState<Record<string, boolean>>({});
+  const [isAllUpdated, setIsAllUpdated] = React.useState(false);
 
   async function handleRunPortfolioAudit() {
     setPortfolioAuditOpen(true);
     setPortfolioAuditLoading(true);
     setPortfolioAuditResult(null);
+    setUpdatedHoldingIds({});
+    setIsAllUpdated(false);
     try {
       const res = await fetch("/api/investments/ai-portfolio-audit", {
         method: "POST",
@@ -365,20 +371,38 @@ export default function InvestmentsPage() {
     }
   }
 
+  async function applySingleHoldingValuation(id: string, newValue: number) {
+    if (!id || newValue <= 0) return;
+    setUpdatingHoldingId(id);
+    try {
+      await update(id, { currentValue: newValue });
+      setUpdatedHoldingIds((prev) => ({ ...prev, [id]: true }));
+      toast.success("Updated current value for holding!");
+      await refetch();
+    } catch (err) {
+      toast.error("Failed to update holding value.");
+    } finally {
+      setUpdatingHoldingId(null);
+    }
+  }
+
   async function applyAllHoldingValuations() {
     if (!portfolioAuditResult || !portfolioAuditResult.holdingRecommendations.length) return;
     setIsUpdatingAllHoldings(true);
     try {
       let updatedCount = 0;
+      const newlyUpdated: Record<string, boolean> = { ...updatedHoldingIds };
       for (const rec of portfolioAuditResult.holdingRecommendations) {
         if (rec.id && rec.estimatedCurrentValue > 0) {
           await update(rec.id, { currentValue: rec.estimatedCurrentValue });
+          newlyUpdated[rec.id] = true;
           updatedCount++;
         }
       }
+      setUpdatedHoldingIds(newlyUpdated);
+      setIsAllUpdated(true);
       toast.success(`Updated current values for ${updatedCount} investment holdings!`);
       await refetch();
-      setPortfolioAuditOpen(false);
     } catch (err) {
       toast.error("Failed to update all holdings.");
     } finally {
@@ -1963,13 +1987,13 @@ export default function InvestmentsPage() {
 
       {/* Portfolio-Wide AI Audit Modal */}
       <Dialog open={portfolioAuditOpen} onOpenChange={setPortfolioAuditOpen}>
-        <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-3xl">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl border-border bg-card p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-lg">
+            <DialogTitle className="flex items-center gap-2 text-lg font-heading">
               <Brain className="size-6 text-primary" />
               Comprehensive Portfolio AI Audit
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-xs text-muted-foreground">
               Gemini AI portfolio analysis across all holdings, returns history, and wealth distribution.
             </DialogDescription>
           </DialogHeader>
@@ -1989,6 +2013,21 @@ export default function InvestmentsPage() {
             </div>
           ) : portfolioAuditResult ? (
             <div className="space-y-5 text-xs">
+              {/* Success Banner after update */}
+              {(isAllUpdated || Object.keys(updatedHoldingIds).length > 0) && (
+                <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 p-3 rounded-xl flex items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="size-5 text-emerald-500 shrink-0" />
+                    <span>
+                      <strong>Values Updated!</strong> Successfully updated {Object.keys(updatedHoldingIds).length} holding(s) with new AI estimated current values in your database.
+                    </span>
+                  </div>
+                  <span className="text-[10px] bg-emerald-500/20 px-2.5 py-0.5 rounded font-bold uppercase tracking-wider">
+                    DB Sync Complete
+                  </span>
+                </div>
+              )}
+
               {/* Header Overview Card */}
               <div className="grid gap-3 sm:grid-cols-3 bg-muted/40 p-4 rounded-xl border border-border">
                 <div className="flex items-center gap-3">
@@ -2040,76 +2079,149 @@ export default function InvestmentsPage() {
                 )}
               </div>
 
-              {/* Holding Recommendations Table */}
+              {/* Holding Recommendations Table with Old vs New Comparison */}
               {portfolioAuditResult.holdingRecommendations.length > 0 && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <h4 className="font-heading text-xs font-semibold">Holdings Strategy Breakdown</h4>
+                    <h4 className="font-heading text-xs font-semibold">Holdings Value Comparison & Strategy Breakdown</h4>
                     <span className="text-[10px] text-muted-foreground">
                       ({portfolioAuditResult.holdingRecommendations.length} holdings analyzed)
                     </span>
                   </div>
 
-                  <div className="rounded-lg border border-border overflow-hidden">
+                  <div className="rounded-lg border border-border overflow-x-auto">
                     <Table>
                       <TableHeader>
-                        <TableRow>
-                          <TableHead className="text-xs">Holding</TableHead>
-                          <TableHead className="text-xs text-right">Est. Value</TableHead>
-                          <TableHead className="text-xs">AI Recommendation</TableHead>
-                          <TableHead className="text-xs">Rationale</TableHead>
+                        <TableRow className="bg-muted/50">
+                          <TableHead className="text-xs font-semibold">Holding Name</TableHead>
+                          <TableHead className="text-xs font-semibold text-right">Old (Current) Value</TableHead>
+                          <TableHead className="text-xs font-semibold text-right">New AI Est. Value</TableHead>
+                          <TableHead className="text-xs font-semibold text-right">Value Change</TableHead>
+                          <TableHead className="text-xs font-semibold">AI Recommendation</TableHead>
+                          <TableHead className="text-xs font-semibold text-center">Status / Action</TableHead>
+                          <TableHead className="text-xs font-semibold min-w-[220px]">Rationale & Analysis</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {portfolioAuditResult.holdingRecommendations.map((rec, idx) => (
-                          <TableRow key={rec.id || idx}>
-                            <TableCell className="font-medium text-xs">{rec.name}</TableCell>
-                            <TableCell className="text-right font-semibold text-xs">
-                              ₹{rec.estimatedCurrentValue?.toLocaleString() || "—"}
-                            </TableCell>
-                            <TableCell>
-                              <span
-                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold text-[10px] ${
-                                  rec.recommendation === "CONTINUE"
-                                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
-                                    : rec.recommendation === "STOP"
-                                    ? "bg-destructive/15 text-destructive border border-destructive/30"
-                                    : "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
-                                }`}
-                              >
-                                {rec.recommendation === "CONTINUE" ? (
-                                  <CheckCircle2 className="size-3" />
-                                ) : rec.recommendation === "STOP" ? (
-                                  <AlertTriangle className="size-3" />
-                                ) : (
-                                  <Eye className="size-3" />
+                        {portfolioAuditResult.holdingRecommendations.map((rec, idx) => {
+                          const holdingInDb = investments.find((inv) => inv.id === rec.id);
+                          const oldVal = holdingInDb ? (holdingInDb.currentValue ?? holdingInDb.amountInvested) : (rec.oldCurrentValue ?? 0);
+                          const newVal = rec.estimatedCurrentValue || oldVal;
+                          const diff = newVal - oldVal;
+                          const isUpdated = !!updatedHoldingIds[rec.id];
+
+                          return (
+                            <TableRow key={rec.id || idx} className={isUpdated ? "bg-emerald-500/5 transition-colors" : ""}>
+                              <TableCell className="font-medium text-xs text-foreground">
+                                <div>{rec.name}</div>
+                                {holdingInDb?.type && (
+                                  <span className="text-[10px] text-muted-foreground">{holdingInDb.type}</span>
                                 )}
-                                {rec.recommendationLabel}
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-[11px] text-muted-foreground max-w-xs truncate">
-                              {rec.rationale}
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                              </TableCell>
+                              <TableCell className="text-right font-medium text-xs text-muted-foreground">
+                                ₹{oldVal.toLocaleString()}
+                              </TableCell>
+                              <TableCell className="text-right font-bold text-xs text-primary">
+                                ₹{newVal.toLocaleString()}
+                              </TableCell>
+                              <TableCell className="text-right text-xs">
+                                <span
+                                  className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded font-semibold text-[10px] ${
+                                    diff > 0
+                                      ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                                      : diff < 0
+                                      ? "bg-destructive/15 text-destructive"
+                                      : "bg-muted text-muted-foreground"
+                                  }`}
+                                >
+                                  {diff > 0 ? "+" : ""}₹{diff.toLocaleString()}
+                                </span>
+                              </TableCell>
+                              <TableCell>
+                                <span
+                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                                    rec.recommendation === "CONTINUE"
+                                      ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
+                                      : rec.recommendation === "STOP"
+                                      ? "bg-destructive/15 text-destructive border border-destructive/30"
+                                      : "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+                                  }`}
+                                >
+                                  {rec.recommendation === "CONTINUE" ? (
+                                    <CheckCircle2 className="size-3" />
+                                  ) : rec.recommendation === "STOP" ? (
+                                    <AlertTriangle className="size-3" />
+                                  ) : (
+                                    <Eye className="size-3" />
+                                  )}
+                                  {rec.recommendationLabel}
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {isUpdated ? (
+                                  <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded font-bold text-[10px] border border-emerald-500/20">
+                                    <CheckCircle2 className="size-3" /> Updated
+                                  </span>
+                                ) : (
+                                  <Button
+                                    size="xs"
+                                    variant="outline"
+                                    disabled={updatingHoldingId === rec.id || isUpdatingAllHoldings}
+                                    onClick={() => applySingleHoldingValuation(rec.id, newVal)}
+                                    className="h-7 text-[10px] font-semibold border-primary/40 text-primary hover:bg-primary/5"
+                                  >
+                                    {updatingHoldingId === rec.id ? (
+                                      <RefreshCw className="size-3 animate-spin" />
+                                    ) : (
+                                      "Update Value"
+                                    )}
+                                  </Button>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-[11px] text-muted-foreground whitespace-normal leading-normal min-w-[220px]">
+                                {rec.rationale}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </div>
                 </div>
               )}
 
-              <DialogFooter className="gap-2 sm:gap-0 pt-2">
-                <Button variant="outline" onClick={() => setPortfolioAuditOpen(false)}>
-                  Close
-                </Button>
-                <Button
-                  disabled={isUpdatingAllHoldings}
-                  onClick={applyAllHoldingValuations}
-                  className="bg-primary text-white flex items-center gap-1.5"
-                >
-                  {isUpdatingAllHoldings ? <RefreshCw className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
-                  {isUpdatingAllHoldings ? "Updating Database..." : "Auto-Update All Current Values"}
-                </Button>
+              <DialogFooter className="gap-2 sm:gap-0 pt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-[11px] text-muted-foreground">
+                  {Object.keys(updatedHoldingIds).length > 0 && (
+                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                      <CheckCircle2 className="size-3.5" />
+                      {Object.keys(updatedHoldingIds).length} of {portfolioAuditResult.holdingRecommendations.length} holding(s) updated in database
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" onClick={() => setPortfolioAuditOpen(false)}>
+                    {Object.keys(updatedHoldingIds).length > 0 ? "Done / Close" : "Close"}
+                  </Button>
+                  <Button
+                    disabled={isUpdatingAllHoldings || isAllUpdated}
+                    onClick={applyAllHoldingValuations}
+                    className="bg-primary text-white flex items-center gap-1.5"
+                  >
+                    {isUpdatingAllHoldings ? (
+                      <RefreshCw className="size-4 animate-spin" />
+                    ) : isAllUpdated ? (
+                      <CheckCircle2 className="size-4 text-emerald-300" />
+                    ) : (
+                      <Sparkles className="size-4" />
+                    )}
+                    {isUpdatingAllHoldings
+                      ? "Updating Database..."
+                      : isAllUpdated
+                      ? "All Values Updated"
+                      : "Auto-Update All Current Values"}
+                  </Button>
+                </div>
               </DialogFooter>
             </div>
           ) : null}

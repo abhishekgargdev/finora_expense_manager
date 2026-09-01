@@ -124,6 +124,11 @@ Evaluate overall portfolio allocation, calculate Health Score (0-100), top actio
 
     const parsed = extractJsonObject(rawResult);
 
+    const invMap: Record<string, number> = {};
+    holdingsData.forEach((h: any) => {
+      invMap[h.id] = h.currentValue;
+    });
+
     const auditResult = {
       healthScore: Math.min(100, Math.max(0, Number(parsed.healthScore) || 80)),
       netReturnPercentage: Number(parsed.netReturnPercentage ?? overallReturnPercentage),
@@ -139,7 +144,13 @@ Evaluate overall portfolio allocation, calculate Health Score (0-100), top actio
       topActionables: Array.isArray(parsed.topActionables)
         ? parsed.topActionables
         : ["Rebalance underperforming funds into index funds.", "Continue regular SIPs in high-performing assets."],
-      holdingRecommendations: Array.isArray(parsed.holdingRecommendations) ? parsed.holdingRecommendations : [],
+      holdingRecommendations: Array.isArray(parsed.holdingRecommendations)
+        ? parsed.holdingRecommendations.map((rec: any) => ({
+            ...rec,
+            oldCurrentValue: invMap[rec.id] !== undefined ? invMap[rec.id] : Number(rec.estimatedCurrentValue) || 0,
+            estimatedCurrentValue: Number(rec.estimatedCurrentValue) || 0,
+          }))
+        : [],
     };
 
     return NextResponse.json({ audit: auditResult });
