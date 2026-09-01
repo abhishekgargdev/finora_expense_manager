@@ -3,7 +3,7 @@
 import * as React from "react";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
-import { CalendarDays, CircleDollarSign, Pencil, Plus, ReceiptText, Trash2, TrendingDown } from "lucide-react";
+import { CalendarDays, CircleDollarSign, Pencil, Plus, ReceiptText, Trash2, TrendingDown, PiggyBank, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { Cell, Pie, PieChart, Bar, BarChart, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
@@ -41,6 +41,7 @@ import {
   type PaymentSourceValue,
 } from "@/lib/payment-source";
 import { type ExpenseEntry, type ExpenseInput, useExpenses } from "@/hooks/useExpenses";
+import { useInvestments } from "@/hooks/useInvestments";
 import { useSearchParams } from "next/navigation";
 import { useCategories } from "@/hooks/useCategories";
 import { Pagination } from "@/components/ui/pagination";
@@ -89,8 +90,9 @@ export default function ExpensesPage() {
     update,
     remove,
   } = useExpenses();
+  const { investments, isLoading: investmentsLoading } = useInvestments();
   const { expenseCategories: CATEGORIES, create: createCategory, isLoading: categoriesLoading } = useCategories();
-  const isLoading = expensesLoading || categoriesLoading;
+  const isLoading = expensesLoading || categoriesLoading || investmentsLoading;
 
   const today = React.useMemo(() => new Date(), []);
   const [month, setMonth] = React.useState(String(today.getMonth() + 1));
@@ -218,6 +220,38 @@ export default function ExpensesPage() {
         .reduce((total, expense) => total + expense.amount, 0),
     [expenses, today]
   );
+
+  const monthInvested = React.useMemo(() => {
+    // 1. Investments logged as expenses this month
+    const expenseInvestments = expenses
+      .filter((e) => {
+        const date = new Date(e.date);
+        const cat = e.category.toLowerCase();
+        return (
+          date.getMonth() === today.getMonth() &&
+          date.getFullYear() === today.getFullYear() &&
+          (cat.includes("invest") || cat.includes("mutual") || cat.includes("stock") || cat.includes("fd") || cat.includes("rd") || cat.includes("gold") || cat.includes("ppf"))
+        );
+      })
+      .reduce((sum, e) => sum + e.amount, 0);
+
+    // 2. Direct investments created this month
+    const directInvestments = investments
+      .filter((inv) => {
+        const date = new Date(inv.startDate || inv.date || "");
+        return (
+          !Number.isNaN(date.getTime()) &&
+          date.getMonth() === today.getMonth() &&
+          date.getFullYear() === today.getFullYear()
+        );
+      })
+      .reduce((sum, inv) => sum + (inv.principalAmount || inv.amountInvested || 0), 0);
+
+    return Math.max(expenseInvestments, directInvestments);
+  }, [expenses, investments, today]);
+
+  const monthActualExpense = Math.max(0, monthTotal - monthInvested);
+
   const yearTotal = React.useMemo(
     () =>
       expenses
@@ -335,9 +369,15 @@ export default function ExpensesPage() {
           Add Expense
         </Button>
       </motion.div>
-      <motion.div className="grid gap-4 md:grid-cols-3" variants={staggerContainer}>
+      <motion.div className="grid gap-4 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5" variants={staggerContainer}>
         <motion.div variants={fadeInUp}>
-          <StatCard icon={<TrendingDown />} label="Total Expense This Month" value={monthTotal} />
+          <StatCard icon={<TrendingDown />} label="Total Outflow (This Month)" value={monthTotal} />
+        </motion.div>
+        <motion.div variants={fadeInUp}>
+          <StatCard icon={<PiggyBank className="text-emerald-500" />} label="Invested (This Month)" value={monthInvested} />
+        </motion.div>
+        <motion.div variants={fadeInUp}>
+          <StatCard icon={<Wallet className="text-rose-500" />} label="Actual Real Expense" value={monthActualExpense} />
         </motion.div>
         <motion.div variants={fadeInUp}>
           <StatCard icon={<CircleDollarSign />} label="Total Expense This Year" value={yearTotal} />

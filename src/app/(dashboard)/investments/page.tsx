@@ -16,6 +16,11 @@ import {
   CheckCircle,
   AlertTriangle,
   Zap,
+  Sparkles,
+  Brain,
+  CheckCircle2,
+  Eye,
+  RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
 import EmptyState from "@/components/finance/EmptyState";
@@ -229,10 +234,98 @@ export default function InvestmentsPage() {
     }
   }, [boostOpen]);
 
+  // AI Valuation State
+  type AIValuationData = {
+    estimatedCurrentValue: number;
+    estimatedReturnPercentage: number;
+    estimatedGain: number;
+    recommendation: "CONTINUE" | "STOP" | "MONITOR";
+    recommendationLabel: string;
+    confidence: string;
+    summary: string;
+    detailedAnalysis: string;
+  };
+
+  const [aiLoading, setAiLoading] = React.useState(false);
+  const [modalAiValuation, setModalAiValuation] = React.useState<AIValuationData | null>(null);
+
+  const [aiAdviceOpen, setAiAdviceOpen] = React.useState(false);
+  const [selectedHoldingForAi, setSelectedHoldingForAi] = React.useState<InvestmentEntry | null>(null);
+  const [tableAiValuation, setTableAiValuation] = React.useState<AIValuationData | null>(null);
+  const [tableAiLoading, setTableAiLoading] = React.useState(false);
+  const [isUpdatingFromAi, setIsUpdatingFromAi] = React.useState(false);
+
+  async function fetchAiValuation(name: string, type: string, amountInvested: number, date?: string, note?: string) {
+    const res = await fetch("/api/investments/ai-valuation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, type, amountInvested, date, note }),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || "Failed to fetch AI valuation.");
+    return json.valuation as AIValuationData;
+  }
+
+  async function handleModalAiEstimate() {
+    const name = form.name.trim();
+    const amount = Number(form.amountInvested);
+    if (!name) return toast.error("Please enter asset/fund name first.");
+    if (!Number.isFinite(amount) || amount <= 0) return toast.error("Please enter a valid invested amount.");
+
+    setAiLoading(true);
+    setModalAiValuation(null);
+    try {
+      const val = await fetchAiValuation(name, form.type, amount, form.date, form.note);
+      setModalAiValuation(val);
+      toast.success("AI Valuation & Recommendation generated.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Unable to estimate value.");
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+  async function openAiAdvice(holding: InvestmentEntry) {
+    setSelectedHoldingForAi(holding);
+    setTableAiValuation(null);
+    setAiAdviceOpen(true);
+    setTableAiLoading(true);
+    try {
+      const val = await fetchAiValuation(
+        holding.name || holding.type,
+        holding.type,
+        holding.amountInvested,
+        holding.date,
+        holding.note || undefined
+      );
+      setTableAiValuation(val);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Unable to load AI advisory.");
+    } finally {
+      setTableAiLoading(false);
+    }
+  }
+
+  async function applyAiValuationToHolding() {
+    if (!selectedHoldingForAi || !tableAiValuation) return;
+    setIsUpdatingFromAi(true);
+    try {
+      await update(selectedHoldingForAi.id, { currentValue: tableAiValuation.estimatedCurrentValue });
+      toast.success(`Current value updated to ₹${tableAiValuation.estimatedCurrentValue.toLocaleString()}`);
+      await refetch();
+      setAiAdviceOpen(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update holding value.");
+    } finally {
+      setIsUpdatingFromAi(false);
+    }
+  }
+
   React.useEffect(() => {
     if (!open) {
       setForm(emptyForm());
       setEditing(null);
+      setModalAiValuation(null);
     }
   }, [open]);
 
@@ -745,6 +838,7 @@ export default function InvestmentsPage() {
                                 onEdit={openEdit}
                                 onDelete={setItemToDelete}
                                 onBoost={openBoost}
+                                onAiAdvice={openAiAdvice}
                                 onExpand={toggleExpand}
                                 isExpanded={!!expandedInvestments[item.id]}
                                 contributions={contributionsMap[item.id] || []}
@@ -864,6 +958,7 @@ export default function InvestmentsPage() {
                           onEdit={openEdit}
                           onDelete={setItemToDelete}
                           onBoost={openBoost}
+                          onAiAdvice={openAiAdvice}
                           onExpand={toggleExpand}
                           isExpanded={!!expandedInvestments[item.id]}
                           contributions={contributionsMap[item.id] || []}
@@ -1041,6 +1136,74 @@ export default function InvestmentsPage() {
                       placeholder="Defaults to invested amount"
                     />
                   </div>
+                </div>
+
+                {/* AI Valuation Section for Market-Linked Assets */}
+                <div className="space-y-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={aiLoading}
+                    onClick={handleModalAiEstimate}
+                    className="text-xs border-primary/40 text-primary hover:bg-primary/5 flex items-center gap-1.5"
+                  >
+                    {aiLoading ? <RefreshCw className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
+                    {aiLoading ? "Evaluating Market..." : "AI Estimate Value & Advice"}
+                  </Button>
+
+                  {modalAiValuation && (
+                    <div className="rounded-xl border border-primary/25 bg-muted/40 p-3.5 space-y-2.5 text-xs animate-in fade-in-50 duration-200">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 text-primary font-semibold">
+                          <Brain className="size-4" /> AI Valuation Result
+                        </div>
+                        <span
+                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold text-[10px] ${
+                            modalAiValuation.recommendation === "CONTINUE"
+                              ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
+                              : modalAiValuation.recommendation === "STOP"
+                              ? "bg-destructive/15 text-destructive border border-destructive/30"
+                              : "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+                          }`}
+                        >
+                          {modalAiValuation.recommendation === "CONTINUE" ? (
+                            <CheckCircle2 className="size-3" />
+                          ) : modalAiValuation.recommendation === "STOP" ? (
+                            <AlertTriangle className="size-3" />
+                          ) : (
+                            <Eye className="size-3" />
+                          )}
+                          {modalAiValuation.recommendationLabel}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 bg-background/60 p-2.5 rounded-lg border border-border/40">
+                        <div>
+                          <span className="text-[10px] text-muted-foreground block uppercase font-medium">Est. Current Value</span>
+                          <span className="font-bold text-sm text-foreground">₹{modalAiValuation.estimatedCurrentValue.toLocaleString()}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-muted-foreground block uppercase font-medium">Est. Return %</span>
+                          <span className={`font-bold text-sm ${modalAiValuation.estimatedReturnPercentage >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
+                            {modalAiValuation.estimatedReturnPercentage >= 0 ? "+" : ""}{modalAiValuation.estimatedReturnPercentage}%
+                          </span>
+                        </div>
+                      </div>
+
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">{modalAiValuation.summary}</p>
+
+                      <Button
+                        type="button"
+                        size="xs"
+                        variant="secondary"
+                        className="w-full bg-primary/10 hover:bg-primary/20 text-primary font-semibold gap-1.5 py-1.5"
+                        onClick={() => change("currentValue", modalAiValuation.estimatedCurrentValue.toString())}
+                      >
+                        <Sparkles className="size-3.5" /> Auto-Fill Current Value (₹{modalAiValuation.estimatedCurrentValue.toLocaleString()})
+                      </Button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -1631,6 +1794,98 @@ export default function InvestmentsPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* AI Investment Advisor Modal */}
+      <Dialog open={aiAdviceOpen} onOpenChange={setAiAdviceOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="size-5 text-primary" />
+              AI Market Advice: {selectedHoldingForAi?.name || selectedHoldingForAi?.type}
+            </DialogTitle>
+            <DialogDescription>
+              Live Gemini AI market valuation, returns analysis, and continue vs stop recommendation.
+            </DialogDescription>
+          </DialogHeader>
+
+          {tableAiLoading ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-3">
+              <RefreshCw className="size-8 text-primary animate-spin" />
+              <p className="text-xs text-muted-foreground">Auditing fund performance & calculating market growth...</p>
+            </div>
+          ) : tableAiValuation ? (
+            <div className="space-y-4 text-xs">
+              {/* Recommendation Header */}
+              <div
+                className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 ${
+                  tableAiValuation.recommendation === "CONTINUE"
+                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
+                    : tableAiValuation.recommendation === "STOP"
+                    ? "bg-destructive/10 border-destructive/30 text-destructive"
+                    : "bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  {tableAiValuation.recommendation === "CONTINUE" ? (
+                    <CheckCircle2 className="size-6 text-emerald-500 shrink-0" />
+                  ) : tableAiValuation.recommendation === "STOP" ? (
+                    <AlertTriangle className="size-6 text-destructive shrink-0" />
+                  ) : (
+                    <Eye className="size-6 text-amber-500 shrink-0" />
+                  )}
+                  <div>
+                    <h4 className="font-heading text-sm font-bold">{tableAiValuation.recommendationLabel}</h4>
+                    <p className="text-[11px] opacity-90">{tableAiValuation.summary}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Metrics Grid */}
+              <div className="grid grid-cols-3 gap-2 bg-muted/40 p-3 rounded-lg border border-border">
+                <div>
+                  <span className="text-[10px] text-muted-foreground block uppercase font-medium">Invested Amount</span>
+                  <span className="font-bold text-sm text-foreground">₹{selectedHoldingForAi?.amountInvested.toLocaleString()}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-muted-foreground block uppercase font-medium">Est. Current Value</span>
+                  <span className="font-bold text-sm text-primary">₹{tableAiValuation.estimatedCurrentValue.toLocaleString()}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-muted-foreground block uppercase font-medium">Est. Return %</span>
+                  <span className={`font-bold text-sm ${tableAiValuation.estimatedReturnPercentage >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
+                    {tableAiValuation.estimatedReturnPercentage >= 0 ? "+" : ""}{tableAiValuation.estimatedReturnPercentage}%
+                  </span>
+                </div>
+              </div>
+
+              {/* Detailed Analysis */}
+              <div className="bg-muted/20 p-3.5 rounded-lg border border-border/60 space-y-2 max-h-56 overflow-y-auto">
+                <h5 className="font-semibold text-foreground flex items-center gap-1.5 text-xs">
+                  <Brain className="size-3.5 text-primary" /> Detailed Analysis & Market Rationale
+                </h5>
+                <div className="text-muted-foreground leading-relaxed text-[11px] whitespace-pre-wrap">
+                  {tableAiValuation.detailedAnalysis}
+                </div>
+              </div>
+
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button variant="outline" onClick={() => setAiAdviceOpen(false)}>
+                  Close
+                </Button>
+                <Button
+                  disabled={isUpdatingFromAi}
+                  onClick={applyAiValuationToHolding}
+                  className="flex items-center gap-1.5"
+                >
+                  {isUpdatingFromAi ? <RefreshCw className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+                  {isUpdatingFromAi ? "Updating DB..." : `Auto-Update Current Value (₹${tableAiValuation.estimatedCurrentValue.toLocaleString()})`}
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
       <LoaderOverlay show={isMutating || isBoosting} label={isBoosting ? "Applying boost..." : (editing ? "Saving investment..." : "Updating investments...")} />
     </div>
   );
@@ -1895,6 +2150,7 @@ type MarketRowProps = {
   onEdit: (item: InvestmentEntry) => void;
   onDelete: (item: InvestmentEntry) => void;
   onBoost: (item: InvestmentEntry) => void;
+  onAiAdvice: (item: InvestmentEntry) => void;
   onExpand: (id: string) => void;
   isExpanded: boolean;
   contributions: ContributionEntry[];
@@ -1908,6 +2164,7 @@ function MarketLinkedTableRow({
   onEdit,
   onDelete,
   onBoost,
+  onAiAdvice,
   onExpand,
   isExpanded,
   contributions,
@@ -1944,6 +2201,14 @@ function MarketLinkedTableRow({
         </TableCell>
         <TableCell>
           <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="xs"
+              className="h-7 px-2 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 flex items-center gap-1 text-[11px] font-semibold"
+              onClick={() => onAiAdvice(item)}
+            >
+              <Sparkles className="size-3" /> AI Advice
+            </Button>
             <Button
               variant="outline"
               size="xs"

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { format } from "date-fns";
-import { CalendarDays, CircleDollarSign, LoaderCircle } from "lucide-react";
+import { CalendarDays, CircleDollarSign, LoaderCircle, Sparkles, Brain, CheckCircle2, AlertTriangle, Eye, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -359,6 +359,47 @@ export default function QuickAddDialog({ open, onOpenChange, onSuccess }: Props)
     }
   }
 
+  // AI Valuation State for QuickAdd
+  const [aiLoading, setAiLoading] = React.useState(false);
+  const [aiValuation, setAiValuation] = React.useState<{
+    estimatedCurrentValue: number;
+    estimatedReturnPercentage: number;
+    recommendation: "CONTINUE" | "STOP" | "MONITOR";
+    recommendationLabel: string;
+    summary: string;
+  } | null>(null);
+
+  async function handleAiEstimate() {
+    const name = investmentName.trim();
+    const amt = Number(amount);
+    if (!name) return toast.error("Please enter asset/fund name first.");
+    if (!Number.isFinite(amt) || amt <= 0) return toast.error("Please enter a valid amount.");
+
+    setAiLoading(true);
+    setAiValuation(null);
+    try {
+      const res = await fetch("/api/investments/ai-valuation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, type: investmentType, amountInvested: amt, date, note }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "AI estimation failed.");
+      setAiValuation(json.valuation);
+      toast.success("AI Valuation & Recommendation generated.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Unable to estimate value.");
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+  React.useEffect(() => {
+    if (!open) {
+      setAiValuation(null);
+    }
+  }, [open]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-lg">
@@ -672,6 +713,74 @@ export default function QuickAddDialog({ open, onOpenChange, onSuccess }: Props)
                         </PopoverContent>
                       </Popover>
                     </div>
+                  </div>
+
+                  {/* AI Valuation Section */}
+                  <div className="space-y-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={aiLoading}
+                      onClick={handleAiEstimate}
+                      className="text-xs border-primary/40 text-primary hover:bg-primary/5 flex items-center gap-1.5"
+                    >
+                      {aiLoading ? <RefreshCw className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
+                      {aiLoading ? "Evaluating Market..." : "AI Estimate Value & Advice"}
+                    </Button>
+
+                    {aiValuation && (
+                      <div className="rounded-xl border border-primary/25 bg-muted/40 p-3 space-y-2 text-xs animate-in fade-in-50 duration-200">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 text-primary font-semibold">
+                            <Brain className="size-3.5" /> AI Valuation
+                          </div>
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                              aiValuation.recommendation === "CONTINUE"
+                                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
+                                : aiValuation.recommendation === "STOP"
+                                ? "bg-destructive/15 text-destructive border border-destructive/30"
+                                : "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+                            }`}
+                          >
+                            {aiValuation.recommendation === "CONTINUE" ? (
+                              <CheckCircle2 className="size-3" />
+                            ) : aiValuation.recommendation === "STOP" ? (
+                              <AlertTriangle className="size-3" />
+                            ) : (
+                              <Eye className="size-3" />
+                            )}
+                            {aiValuation.recommendationLabel}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 bg-background/60 p-2 rounded-lg border border-border/40">
+                          <div>
+                            <span className="text-[9px] text-muted-foreground block uppercase font-medium">Est. Value</span>
+                            <span className="font-bold text-xs text-foreground">₹{aiValuation.estimatedCurrentValue.toLocaleString()}</span>
+                          </div>
+                          <div>
+                            <span className="text-[9px] text-muted-foreground block uppercase font-medium">Est. Return</span>
+                            <span className={`font-bold text-xs ${aiValuation.estimatedReturnPercentage >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
+                              {aiValuation.estimatedReturnPercentage >= 0 ? "+" : ""}{aiValuation.estimatedReturnPercentage}%
+                            </span>
+                          </div>
+                        </div>
+
+                        <p className="text-[10px] text-muted-foreground leading-relaxed">{aiValuation.summary}</p>
+
+                        <Button
+                          type="button"
+                          size="xs"
+                          variant="secondary"
+                          className="w-full bg-primary/10 hover:bg-primary/20 text-primary font-semibold gap-1 py-1 text-[11px]"
+                          onClick={() => setCurrentValue(aiValuation.estimatedCurrentValue.toString())}
+                        >
+                          <Sparkles className="size-3" /> Auto-Fill Current Value (₹{aiValuation.estimatedCurrentValue.toLocaleString()})
+                        </Button>
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid gap-2">
