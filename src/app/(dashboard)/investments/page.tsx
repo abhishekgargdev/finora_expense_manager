@@ -321,6 +321,71 @@ export default function InvestmentsPage() {
     }
   }
 
+  // AI Portfolio Audit State
+  type PortfolioAuditData = {
+    healthScore: number;
+    netReturnPercentage: number;
+    totalInvested: number;
+    totalCurrentValue: number;
+    portfolioSummary: string;
+    diversificationRating: string;
+    topActionables: string[];
+    holdingRecommendations: {
+      id: string;
+      name: string;
+      recommendation: "CONTINUE" | "STOP" | "MONITOR";
+      recommendationLabel: string;
+      estimatedCurrentValue: number;
+      rationale: string;
+    }[];
+  };
+
+  const [portfolioAuditOpen, setPortfolioAuditOpen] = React.useState(false);
+  const [portfolioAuditLoading, setPortfolioAuditLoading] = React.useState(false);
+  const [portfolioAuditResult, setPortfolioAuditResult] = React.useState<PortfolioAuditData | null>(null);
+  const [isUpdatingAllHoldings, setIsUpdatingAllHoldings] = React.useState(false);
+
+  async function handleRunPortfolioAudit() {
+    setPortfolioAuditOpen(true);
+    setPortfolioAuditLoading(true);
+    setPortfolioAuditResult(null);
+    try {
+      const res = await fetch("/api/investments/ai-portfolio-audit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Portfolio audit failed.");
+      setPortfolioAuditResult(json.audit);
+      toast.success("AI Portfolio Audit completed!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Unable to perform portfolio audit.");
+    } finally {
+      setPortfolioAuditLoading(false);
+    }
+  }
+
+  async function applyAllHoldingValuations() {
+    if (!portfolioAuditResult || !portfolioAuditResult.holdingRecommendations.length) return;
+    setIsUpdatingAllHoldings(true);
+    try {
+      let updatedCount = 0;
+      for (const rec of portfolioAuditResult.holdingRecommendations) {
+        if (rec.id && rec.estimatedCurrentValue > 0) {
+          await update(rec.id, { currentValue: rec.estimatedCurrentValue });
+          updatedCount++;
+        }
+      }
+      toast.success(`Updated current values for ${updatedCount} investment holdings!`);
+      await refetch();
+      setPortfolioAuditOpen(false);
+    } catch (err) {
+      toast.error("Failed to update all holdings.");
+    } finally {
+      setIsUpdatingAllHoldings(false);
+    }
+  }
+
   React.useEffect(() => {
     if (!open) {
       setForm(emptyForm());
@@ -697,10 +762,20 @@ export default function InvestmentsPage() {
           <h2 className="font-heading text-2xl font-semibold">Investments</h2>
           <p className="mt-1 text-sm text-muted-foreground">Monitor contributions, present value, and performance.</p>
         </div>
-        <Button onClick={openCreate} className="w-full sm:w-auto">
-          <Plus />
-          Add Investment
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            onClick={handleRunPortfolioAudit}
+            disabled={portfolioAuditLoading}
+            className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-medium shadow-md flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all"
+          >
+            {portfolioAuditLoading ? <RefreshCw className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+            <span>{portfolioAuditLoading ? "Auditing Portfolio..." : "Portfolio AI Audit"}</span>
+          </Button>
+          <Button onClick={openCreate} className="w-full sm:w-auto">
+            <Plus />
+            Add Investment
+          </Button>
+        </div>
       </div>
 
       {/* Maturing Soon Banner Widget */}
@@ -1879,6 +1954,161 @@ export default function InvestmentsPage() {
                 >
                   {isUpdatingFromAi ? <RefreshCw className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
                   {isUpdatingFromAi ? "Updating DB..." : `Auto-Update Current Value (₹${tableAiValuation.estimatedCurrentValue.toLocaleString()})`}
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      {/* Portfolio-Wide AI Audit Modal */}
+      <Dialog open={portfolioAuditOpen} onOpenChange={setPortfolioAuditOpen}>
+        <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg">
+              <Brain className="size-6 text-primary" />
+              Comprehensive Portfolio AI Audit
+            </DialogTitle>
+            <DialogDescription>
+              Gemini AI portfolio analysis across all holdings, returns history, and wealth distribution.
+            </DialogDescription>
+          </DialogHeader>
+
+          {portfolioAuditLoading ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
+              <div className="relative">
+                <Brain className="size-14 text-primary animate-pulse" />
+                <Sparkles className="absolute -top-2 -right-2 size-6 text-primary animate-bounce" />
+              </div>
+              <div>
+                <h4 className="font-heading text-sm font-semibold">Auditing Entire Portfolio Holdings...</h4>
+                <p className="text-xs text-muted-foreground max-w-md mt-1">
+                  We are aggregating all your Market-Linked funds, Fixed Deposits, contributions, and risk exposures to construct your AI strategy.
+                </p>
+              </div>
+            </div>
+          ) : portfolioAuditResult ? (
+            <div className="space-y-5 text-xs">
+              {/* Header Overview Card */}
+              <div className="grid gap-3 sm:grid-cols-3 bg-muted/40 p-4 rounded-xl border border-border">
+                <div className="flex items-center gap-3">
+                  <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary font-bold text-lg font-heading">
+                    {portfolioAuditResult.healthScore}
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-muted-foreground uppercase font-semibold">Health Score</span>
+                    <h4 className="font-semibold text-sm text-foreground">{portfolioAuditResult.diversificationRating}</h4>
+                  </div>
+                </div>
+                <div>
+                  <span className="text-[10px] text-muted-foreground uppercase font-semibold">Total Portfolio Capital</span>
+                  <div className="font-bold text-sm text-foreground">₹{portfolioAuditResult.totalInvested.toLocaleString()}</div>
+                  <span className="text-[10px] text-muted-foreground">Current: ₹{portfolioAuditResult.totalCurrentValue.toLocaleString()}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-muted-foreground uppercase font-semibold">Portfolio Combined Return</span>
+                  <div className={`font-bold text-sm ${portfolioAuditResult.netReturnPercentage >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
+                    {portfolioAuditResult.netReturnPercentage >= 0 ? "+" : ""}{portfolioAuditResult.netReturnPercentage}%
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">
+                    Profit: ₹{(portfolioAuditResult.totalCurrentValue - portfolioAuditResult.totalInvested).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Summary & Strategy Tips */}
+              <div className="bg-primary/5 p-4 rounded-xl border border-primary/20 space-y-3">
+                <div>
+                  <h4 className="font-heading text-xs font-semibold text-primary flex items-center gap-1.5">
+                    <Sparkles className="size-4" /> AI Executive Strategy Summary
+                  </h4>
+                  <p className="text-xs text-foreground/90 mt-1 leading-relaxed">{portfolioAuditResult.portfolioSummary}</p>
+                </div>
+
+                {portfolioAuditResult.topActionables.length > 0 && (
+                  <div className="space-y-1.5 border-t border-primary/15 pt-2.5">
+                    <span className="text-[11px] font-semibold text-foreground uppercase tracking-wider block">Key Action Steps</span>
+                    <ul className="space-y-1.5">
+                      {portfolioAuditResult.topActionables.map((act, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-xs text-foreground/90">
+                          <CheckCircle2 className="size-4 text-emerald-500 shrink-0 mt-0.5" />
+                          <span>{act}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              {/* Holding Recommendations Table */}
+              {portfolioAuditResult.holdingRecommendations.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-heading text-xs font-semibold">Holdings Strategy Breakdown</h4>
+                    <span className="text-[10px] text-muted-foreground">
+                      ({portfolioAuditResult.holdingRecommendations.length} holdings analyzed)
+                    </span>
+                  </div>
+
+                  <div className="rounded-lg border border-border overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-xs">Holding</TableHead>
+                          <TableHead className="text-xs text-right">Est. Value</TableHead>
+                          <TableHead className="text-xs">AI Recommendation</TableHead>
+                          <TableHead className="text-xs">Rationale</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {portfolioAuditResult.holdingRecommendations.map((rec, idx) => (
+                          <TableRow key={rec.id || idx}>
+                            <TableCell className="font-medium text-xs">{rec.name}</TableCell>
+                            <TableCell className="text-right font-semibold text-xs">
+                              ₹{rec.estimatedCurrentValue?.toLocaleString() || "—"}
+                            </TableCell>
+                            <TableCell>
+                              <span
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                                  rec.recommendation === "CONTINUE"
+                                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
+                                    : rec.recommendation === "STOP"
+                                    ? "bg-destructive/15 text-destructive border border-destructive/30"
+                                    : "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+                                }`}
+                              >
+                                {rec.recommendation === "CONTINUE" ? (
+                                  <CheckCircle2 className="size-3" />
+                                ) : rec.recommendation === "STOP" ? (
+                                  <AlertTriangle className="size-3" />
+                                ) : (
+                                  <Eye className="size-3" />
+                                )}
+                                {rec.recommendationLabel}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-[11px] text-muted-foreground max-w-xs truncate">
+                              {rec.rationale}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+
+              <DialogFooter className="gap-2 sm:gap-0 pt-2">
+                <Button variant="outline" onClick={() => setPortfolioAuditOpen(false)}>
+                  Close
+                </Button>
+                <Button
+                  disabled={isUpdatingAllHoldings}
+                  onClick={applyAllHoldingValuations}
+                  className="bg-primary text-white flex items-center gap-1.5"
+                >
+                  {isUpdatingAllHoldings ? <RefreshCw className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+                  {isUpdatingAllHoldings ? "Updating Database..." : "Auto-Update All Current Values"}
                 </Button>
               </DialogFooter>
             </div>

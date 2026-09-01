@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { generateContent } from "@/lib/gemini";
+import { generateContent, extractJsonObject } from "@/lib/gemini";
 
 const VALUATION_SYSTEM_PROMPT = `You are a professional Financial & Investment Analyst AI.
 Your task is to analyze a Market-Linked investment (such as a Mutual Fund, Stock, ETF, Gold, or Crypto) based on its asset name, asset category/type, purchase date, and amount invested.
@@ -61,21 +61,10 @@ Estimate current market value, growth %, gain/loss, and recommend whether to CON
       systemPrompt: VALUATION_SYSTEM_PROMPT,
       temperature: 0.2,
       maxTokens: 2048,
+      jsonMode: true,
     });
 
-    // Clean JSON response (strip markdown fences if present)
-    let cleaned = rawResult.trim();
-    if (cleaned.startsWith("```json")) {
-      cleaned = cleaned.slice(7);
-    } else if (cleaned.startsWith("```")) {
-      cleaned = cleaned.slice(3);
-    }
-    if (cleaned.endsWith("```")) {
-      cleaned = cleaned.slice(0, -3);
-    }
-    cleaned = cleaned.trim();
-
-    const parsedValuation = JSON.parse(cleaned);
+    const parsedValuation = extractJsonObject(rawResult);
 
     // Sanitize numeric outputs
     const estimatedCurrentValue = Math.round(Number(parsedValuation.estimatedCurrentValue) || amountInvested);

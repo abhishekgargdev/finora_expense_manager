@@ -369,21 +369,51 @@ export default function ExpensesPage() {
           Add Expense
         </Button>
       </motion.div>
-      <motion.div className="grid gap-4 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5" variants={staggerContainer}>
+      <motion.div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5" variants={staggerContainer}>
         <motion.div variants={fadeInUp}>
-          <StatCard icon={<TrendingDown />} label="Total Outflow (This Month)" value={monthTotal} />
+          <StatCard
+            icon={<TrendingDown />}
+            label="Total Outflow"
+            subtitle="All Cash Payments (This Month)"
+            value={monthTotal}
+            accent="rose"
+          />
         </motion.div>
         <motion.div variants={fadeInUp}>
-          <StatCard icon={<PiggyBank className="text-emerald-500" />} label="Invested (This Month)" value={monthInvested} />
+          <StatCard
+            icon={<PiggyBank />}
+            label="Invested (This Month)"
+            subtitle="Wealth Assets Created"
+            value={monthInvested}
+            accent="emerald"
+          />
         </motion.div>
         <motion.div variants={fadeInUp}>
-          <StatCard icon={<Wallet className="text-rose-500" />} label="Actual Real Expense" value={monthActualExpense} />
+          <StatCard
+            icon={<Wallet />}
+            label="Actual Real Expense"
+            subtitle="Net Consumption Outflow"
+            value={monthActualExpense}
+            accent="indigo"
+          />
         </motion.div>
         <motion.div variants={fadeInUp}>
-          <StatCard icon={<CircleDollarSign />} label="Total Expense This Year" value={yearTotal} />
+          <StatCard
+            icon={<CircleDollarSign />}
+            label="Total Spent (Year)"
+            subtitle="Annual Cumulative"
+            value={yearTotal}
+            accent="blue"
+          />
         </motion.div>
         <motion.div variants={fadeInUp}>
-          <StatCard icon={<CalendarDays />} label="Avg Monthly" value={averageMonthly} />
+          <StatCard
+            icon={<CalendarDays />}
+            label="Avg Monthly"
+            subtitle="Yearly Average"
+            value={averageMonthly}
+            accent="amber"
+          />
         </motion.div>
       </motion.div>
 

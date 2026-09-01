@@ -62,6 +62,44 @@ export interface GenerateOptions {
   systemPrompt?: string;
   temperature?: number;
   maxTokens?: number;
+  jsonMode?: boolean;
+}
+
+/**
+ * Safely extracts and parses a JSON object from text that may contain markdown formatting or conversational text.
+ */
+export function extractJsonObject<T = any>(text: string): T {
+  if (!text || !text.trim()) {
+    throw new Error("Empty response received from AI model.");
+  }
+
+  let cleaned = text.trim();
+
+  // Strip markdown code fences (e.g. ```json ... ```)
+  cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+
+  // Try direct parse first
+  try {
+    return JSON.parse(cleaned) as T;
+  } catch {
+    // Locate opening '{' and matching closing '}'
+    const firstBrace = cleaned.indexOf("{");
+    const lastBrace = cleaned.lastIndexOf("}");
+
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      const candidate = cleaned.substring(firstBrace, lastBrace + 1);
+      try {
+        return JSON.parse(candidate) as T;
+      } catch {
+        // Fallback regex match for JSON object structure
+        const match = cleaned.match(/\{[\s\S]*?\}/);
+        if (match) {
+          return JSON.parse(match[0]) as T;
+        }
+      }
+    }
+    throw new Error("Unable to extract valid JSON object from AI response.");
+  }
 }
 
 async function callGemini(
@@ -206,7 +244,7 @@ export async function generateContent(
     );
   }
 
-  const { systemPrompt, temperature = 0.4, maxTokens = 2048 } = options;
+  const { systemPrompt, temperature = 0.4, maxTokens = 2048, jsonMode = false } = options;
 
   let cumulativeResponse = "";
   let lastError: Error | null = null;
@@ -236,6 +274,11 @@ export async function generateContent(
         }
         successfulCalls++;
         console.log(`Successfully generated chunk with ${keyLabel}.`);
+
+        // In JSON mode, return after first successful structured response to prevent concatenating multiple JSON blocks
+        if (jsonMode) {
+          break;
+        }
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
@@ -251,3 +294,4 @@ export async function generateContent(
 
   return cumulativeResponse;
 }
+
